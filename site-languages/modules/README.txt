@@ -86,5 +86,3 @@ For discussion and support of modules, see:
 http://processwire.com/talk/forum/4-modulesplugins/
 
 
-
-
