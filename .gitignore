@@ -1,3 +1,5 @@
+.htaccess
+
 .DS_Store?
 .DS_Store
 *.old
@@ -20,7 +22,6 @@ site-default/assets/cache
 site-default/assets/installed.php
 site
 site-skyscrapers
-.htaccess
 tmp
 upgrade.php
 .idea
