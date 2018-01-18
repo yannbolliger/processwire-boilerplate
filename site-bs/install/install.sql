@@ -11,9 +11,7 @@ DROP TABLE IF EXISTS `caches`;
 CREATE TABLE `caches` (
   `name` varchar(250) NOT NULL,
   `data` mediumtext NOT NULL,
-  `expires` datetime NOT NULL,
-  PRIMARY KEY (`name`),
-  KEY `expires` (`expires`)
+  `expires` datetime NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 DROP TABLE IF EXISTS `fieldgroups`;
@@ -118,9 +116,6 @@ CREATE TABLE `field_email` (
   `pages_id` int(10) UNSIGNED NOT NULL,
   `data` varchar(250) NOT NULL DEFAULT ''
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-
-INSERT INTO `field_email` (`pages_id`, `data`) VALUES
-(41, 'kontakt@bolligerstudios.ch');
 
 DROP TABLE IF EXISTS `field_headline`;
 CREATE TABLE `field_headline` (
@@ -305,28 +300,12 @@ CREATE TABLE `field_pass` (
   `salt` char(32) NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=ascii;
 
-INSERT INTO `field_pass` (`pages_id`, `data`, `salt`) VALUES
-(41, 'pPGlWuFdFR8/KOMM9SwSawwyD7flGTi', '$2y$11$ayORGnGB5K1ERo/y8GdU7.'),
-(40, '', '');
-
 DROP TABLE IF EXISTS `field_permissions`;
 CREATE TABLE `field_permissions` (
   `pages_id` int(10) UNSIGNED NOT NULL,
   `data` int(11) NOT NULL,
   `sort` int(10) UNSIGNED NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-
-INSERT INTO `field_permissions` (`pages_id`, `data`, `sort`) VALUES
-(38, 32, 1),
-(38, 34, 2),
-(38, 35, 3),
-(37, 36, 0),
-(38, 36, 0),
-(38, 50, 4),
-(38, 51, 5),
-(38, 52, 7),
-(38, 53, 8),
-(38, 54, 6);
 
 DROP TABLE IF EXISTS `field_process`;
 CREATE TABLE `field_process` (
@@ -367,11 +346,6 @@ CREATE TABLE `field_roles` (
   `data` int(11) NOT NULL,
   `sort` int(10) UNSIGNED NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-
-INSERT INTO `field_roles` (`pages_id`, `data`, `sort`) VALUES
-(40, 37, 0),
-(41, 37, 0),
-(41, 38, 2);
 
 DROP TABLE IF EXISTS `field_summary`;
 CREATE TABLE `field_summary` (
@@ -694,9 +668,6 @@ CREATE TABLE `session_login_throttle` (
   `attempts` int(10) UNSIGNED NOT NULL DEFAULT '0',
   `last_attempt` int(10) UNSIGNED NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-
-INSERT INTO `session_login_throttle` (`name`, `attempts`, `last_attempt`) VALUES
-('admin', 1, 1516246993);
 
 DROP TABLE IF EXISTS `templates`;
 CREATE TABLE `templates` (
