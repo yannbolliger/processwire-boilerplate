@@ -90,15 +90,6 @@ INSERT INTO `fields` (`id`, `type`, `name`, `flags`, `label`, `data`) VALUES
 (100, 'FieldtypeFile', 'language_files_site', 24, 'Site Translation Files', '{\"description\":\"Use this for field for translations specific to your site (like files in \\/site\\/templates\\/ for example).\",\"extensions\":\"json csv\",\"maxFiles\":0,\"inputfieldClass\":\"InputfieldFile\",\"unzip\":1,\"descriptionRows\":0,\"fileSchema\":2}'),
 (103, 'FieldtypeModule', 'admin_theme', 8, 'Admin Theme', '{\"moduleTypes\":[\"AdminTheme\"],\"labelField\":\"title\",\"inputfieldClass\":\"InputfieldRadios\"}');
 
-DROP TABLE IF EXISTS `field_admin_theme`;
-CREATE TABLE `field_admin_theme` (
-  `pages_id` int(10) UNSIGNED NOT NULL,
-  `data` int(11) NOT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-
-INSERT INTO `field_admin_theme` (`pages_id`, `data`) VALUES
-(41, 171);
-
 DROP TABLE IF EXISTS `field_body`;
 CREATE TABLE `field_body` (
   `pages_id` int(10) UNSIGNED NOT NULL,
@@ -567,7 +558,6 @@ INSERT INTO `pages` (`id`, `parent_id`, `templates_id`, `name`, `status`, `modif
 (36, 31, 5, 'page-view', 25, '2018-01-18 02:25:51', 41, '2018-01-18 02:25:51', 2, '2018-01-18 02:25:51', 0, NULL, 1),
 (37, 30, 4, 'guest', 25, '2018-01-18 02:25:51', 41, '2018-01-18 02:25:51', 2, '2018-01-18 02:25:51', 0, NULL, 1),
 (38, 30, 4, 'superuser', 25, '2018-01-18 02:25:51', 41, '2018-01-18 02:25:51', 2, '2018-01-18 02:25:51', 1, NULL, 1),
-(41, 29, 3, 'admin', 1, '2018-01-18 03:18:18', 41, '2018-01-18 02:25:51', 2, '2018-01-18 02:25:51', 0, NULL, 1),
 (40, 29, 3, 'guest', 25, '2018-01-18 02:25:51', 41, '2018-01-18 02:25:51', 2, '2018-01-18 02:25:51', 1, NULL, 1),
 (50, 31, 5, 'page-sort', 25, '2018-01-18 02:25:51', 41, '2018-01-18 02:25:51', 41, '2018-01-18 02:25:51', 5, NULL, 1),
 (51, 31, 5, 'page-template', 25, '2018-01-18 02:25:51', 41, '2018-01-18 02:25:51', 41, '2018-01-18 02:25:51', 6, NULL, 1),
@@ -823,15 +813,15 @@ ALTER TABLE `templates`
 
 
 ALTER TABLE `fieldgroups`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=98;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 ALTER TABLE `fields`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=104;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 ALTER TABLE `modules`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=173;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 ALTER TABLE `pages`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1020;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 ALTER TABLE `templates`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
