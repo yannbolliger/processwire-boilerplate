@@ -3,45 +3,24 @@
 /**
  * _main.php
  * Main markup file (multi-language)
-
- * MULTI-LANGUAGE NOTE: Please see the README.txt file
- *
- * This file contains all the main markup for the site and outputs the regions
- * defined in the initialization (_init.php) file. These regions include:
- *
- *   $title: The page title/headline
- *   $content: The markup that appears in the main content/body copy column
- *   $sidebar: The markup that appears in the sidebar column
- *
- * Of course, you can add as many regions as you like, or choose not to use
- * them at all! This _init.php > [template].php > _main.php scheme is just
- * the methodology we chose to use in this particular site profile, and as you
- * dig deeper, you'll find many others ways to do the same thing.
- *
- * This file is automatically appended to all template files as a result of
- * $config->appendTemplateFile = '_main.php'; in /site/config.php.
- *
- * In any given template file, if you do not want this main markup file
- * included, go in your admin to Setup > Templates > [some-template] > and
- * click on the "Files" tab. Check the box to "Disable automatic append of
- * file _main.php". You would do this if you wanted to echo markup directly
- * from your template file or if you were using a template file for some other
- * kind of output like an RSS feed or sitemap.xml, for example.
- *
- *
  */
 ?>
+
 <!DOCTYPE html>
 <html lang="<?php echo _x('en', 'HTML language code'); ?>">
 <head>
+	<meta charset="utf-8" />
 	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1, maximum-scale=1">
+	<meta http-equiv="x-ua-compatible" content="ie=edge" />
+
 	<title><?php echo $title; ?></title>
 	<meta name="description" content="<?php echo $page->summary; ?>" />
-	<link href="//fonts.googleapis.com/css?family=Lusitana:400,700|Quattrocento:400,700" rel="stylesheet" type="text/css" />
-	<link rel="stylesheet" type="text/css" href="<?php echo $config->urls->templates?>styles/main.css" />
-	<?php
+	<meta name="keywords" content="" />
 
+	<link rel="stylesheet" type="text/css" href="<?php echo $config->urls->templates?>styles/style.css" />
+
+	<?php
 	// handle output of 'hreflang' link tags for multi-language
 	// this is good to do for SEO in helping search engines understand
 	// what languages your site is presented in
@@ -55,15 +34,12 @@
 		// output the <link> tag: note that this assumes your language names are the same as required by hreflang.
 		echo "\n\t<link rel='alternate' hreflang='$hreflang' href='$url' />";
 	}
-
 	?>
 
 </head>
-<body class="<?php if($sidebar) echo "has-sidebar"; ?>">
+<body>
 
-	<a href="#main" class="visually-hidden element-focusable bypass-to-main"><?php echo _x('Skip to content', 'bypass'); ?></a>
-
-	<!-- language switcher / navigation -->
+	<?php // language switcher / navigation ?>
 	<ul class='languages' role='navigation'><?php
 		foreach($languages as $language) {
 			if(!$page->viewable($language)) continue; // is page viewable in this language?
@@ -78,7 +54,7 @@
 		}
 	?></ul>
 
-	<!-- top navigation -->
+	<? // top navigation ?>
 	<ul class='topnav' role='navigation'><?php
 		// top navigation consists of homepage and its visible children
 		foreach($homepage->and($homepage->children) as $item) {
@@ -94,7 +70,7 @@
 		if($page->editable()) echo "<li class='edit'><a href='$page->editUrl'>" . __('Edit') . "</a></li>";
 	?></ul>
 
-	<!-- breadcrumbs -->
+	<?php // breadcrumbs ?>
 	<div class='breadcrumbs' role='navigation' aria-label='<?php echo _x('You are here:', 'breadcrumbs'); ?>'><?php
 		// breadcrumbs are the current page's parents
 		foreach($page->parents() as $item) {
@@ -104,7 +80,7 @@
 		echo "<span>$page->title</span> ";
 	?></div>
 
-	<!-- search engine -->
+	<?php //search engine ?>
 	<form class='search' action='<?php echo $pages->get('template=search')->url; ?>' method='get'>
 		<label for='search' class='visually-hidden'><?php echo _x('Search:', 'label'); ?></label>
 		<input type='text' name='q' id='search' placeh older='<?php echo _x('Search', 'placeholder'); ?>' />
@@ -112,9 +88,7 @@
 	</form>
 
 
-	<main id='main'>
-
-		<!-- main content -->
+	<main>
 		<div id='content'>
 
 			<h1><?php echo $title; ?></h1>
@@ -135,21 +109,8 @@
 
 	</main>
 
-	<!-- footer -->
-	<footer id='footer'>
-		<p>
-		<a href='http://processwire.com'><?php echo __('Powered by ProcessWire CMS'); ?></a> &nbsp; / &nbsp;
-		<?php
-		if($user->isLoggedin()) {
-			// if user is logged in, show a logout link
-			echo "<a href='{$config->urls->admin}login/logout/'>" . sprintf(__('Logout (%s)'), $user->name) . "</a>";
-		} else {
-			// if user not logged in, show a login link
-			echo "<a href='{$config->urls->admin}'>" . __('Admin Login') . "</a>";
-		}
-		?>
 
-		</p>
+	<footer>
 	</footer>
 
 </body>

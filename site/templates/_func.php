@@ -2,15 +2,9 @@
 
 /**
  * /site/templates/_func.php
- * 
+ *
  * Example of shared functions used by template files
  *
- * This file is currently included by _init.php 
- * 
- * FUN FACT: This file is identical to the one in the NON-multi-language
- * version of this site profile (site-default). In fact, it's rare that
- * one has to think about languages when developing a multi-language 
- * site in ProcessWire. 
  *
  */
 
@@ -43,7 +37,7 @@ function renderNav(PageArray $items) {
 
 		// markup for the link
 		$out .= "<a href='$item->url'>$item->title</a> ";
-	
+
 		// if the item has summary text, include that too
 		if($item->summary) $out .= "<div class='summary'>$item->summary</div>";
 
@@ -60,12 +54,12 @@ function renderNav(PageArray $items) {
 
 
 
-/** 
+/**
  * Given a group of pages, render a <ul> navigation tree
  *
- * This is here to demonstrate an example of a more intermediate level 
+ * This is here to demonstrate an example of a more intermediate level
  * shared function and usage is completely optional. This is very similar to
- * the renderNav() function above except that it can output more than one 
+ * the renderNav() function above except that it can output more than one
  * level of navigation (recursively) and can include other fields in the output.
  *
  * @param array|PageArray $items
@@ -79,7 +73,7 @@ function renderNavTree($items, $maxDepth = 0, $fieldNames = '', $class = 'nav') 
 
 	// if we were given a single Page rather than a group of them, we'll pretend they
 	// gave us a group of them (a group/array of 1)
-	if($items instanceof Page) $items = array($items); 
+	if($items instanceof Page) $items = array($items);
 
 	// $out is where we store the markup we are creating in this function
 	$out = '';
@@ -97,15 +91,15 @@ function renderNavTree($items, $maxDepth = 0, $fieldNames = '', $class = 'nav') 
 		// if there are extra field names specified, render markup for each one in a <div>
 		// having a class name the same as the field name
 		if($fieldNames) foreach(explode(' ', $fieldNames) as $fieldName) {
-			$value = $item->get($fieldName); 
+			$value = $item->get($fieldName);
 			if($value) $out .= " <div class='$fieldName'>$value</div>";
 		}
 
 		// if the item has children and we're allowed to output tree navigation (maxDepth)
-		// then call this same function again for the item's children 
+		// then call this same function again for the item's children
 		if($item->hasChildren() && $maxDepth) {
 			if($class == 'nav') $class = 'nav nav-tree';
-			$out .= renderNavTree($item->children, $maxDepth-1, $fieldNames, $class); 
+			$out .= renderNavTree($item->children, $maxDepth-1, $fieldNames, $class);
 		}
 
 		// close the list item
@@ -116,6 +110,5 @@ function renderNavTree($items, $maxDepth = 0, $fieldNames = '', $class = 'nav') 
 	if($out) $out = "<ul class='$class'>$out</ul>\n";
 
 	// return the markup we generated above
-	return $out; 
+	return $out;
 }
-
