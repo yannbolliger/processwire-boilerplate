@@ -1,6 +1,5 @@
 .htaccess
 .DS_STORE
-site/config.php
 .sass-cache/
 
 #ignore ProcessWire files and folders
