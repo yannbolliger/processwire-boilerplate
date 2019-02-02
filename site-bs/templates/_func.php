@@ -3,12 +3,46 @@
 /**
  * /site/templates/_func.php
  *
- * Example of shared functions used by template files
- *
- *
  */
 
 
+/**
+* Return asset urls with a version number from git HEAD master.
+*
+* @param String assetPath path to file from ".../templates/"
+* @return String
+*/
+function versionedAssetUrl($assetPath) {
+ 	$config = wire("config");
+
+  $path = $config->paths->root . ".git/refs/heads/master";
+  $gitCommit = substr(file_get_contents($path), 0, 6);
+  return $config->urls->templates . $assetPath . "?v=" . $gitCommit;
+}
+
+/**
+* Render gallery from image array for colorbox images.
+*
+* @param PageArray array of images to render
+* @return String gallery markup
+*/
+function renderImages($images) {
+  $output = "";
+
+  foreach($images as $img) {
+    $thumb = $img->width(400)->url;
+
+    $output .= "
+      <div>
+        <a
+					href='$img->url'
+					class='img colorbox'
+					style='background-image: url(\" $thumb \");'
+				></a>
+      </div>";
+  }
+  return "<div id='images' class='row'>{$output}</div>";
+}
 
 /**
 * Truncate text to a wordwrap.
@@ -29,25 +63,6 @@ function truncateText($text, $maxlength = 200) {
 		$text = substr($text, 0, strrpos($text, ' '));
 	}
 	return trim($text) . "&hellip;";
-}
-
-/**
-* Render a nice list of files with icon and name/description and a title.
-*
-* @param WireArray $files of files
-* @return String html or empty if no files
-*/
-function renderFiles($files) {
-	if ($files->count == 0) { return ""; }
-
-	$list = "";
-	foreach($files as $file) {
-		$desc = $file->description($user->language);
-	  $text = ($desc != "") ? $desc : $file->name;
-
-	  $list .= "<li> <a href='{$file->url}'>$text</a> </li>";
-	}
-	return "<div class='files'> <h4>Dateien</h4> <ul>{$list}</ul> </div>";
 }
 
 /**

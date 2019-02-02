@@ -21,5 +21,8 @@ $sidebar = "";
 // we preload a copy here in $homepage for convenience.
 $homepage = $pages->get('/');
 
+// Set this to true if you don't want to render the main layout.
+$disableMain = false;
+
 // Include shared functions
 include_once("./_func.php");

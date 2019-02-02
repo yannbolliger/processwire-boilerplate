@@ -1,6 +1,8 @@
-
+// compressed: false
 
 @import "normalize";
+// @import "colorbox";
+// @import "contact";
 
 //////////////////////////////
 // Variables
@@ -9,6 +11,7 @@ $unit: 16px;
 
 // Breakpoints
 $mobile-breakpoint: 640px;
+$max-container-width: 1000px;
 
 // Typography
 $font-base: 20px;
@@ -81,14 +84,14 @@ img {
 }
 
 .only-desktop {
-  @media screen and (max-width: $mobile-breakpoint) {
+  @media screen and (max-width: $mobile-breakpoint - 0.5) {
     display: none !important;
   }
 }
 
 .container {
   padding: 0 $unit;
-  width: 100%;
+  max-width: $max-container-width;
   margin: 0 auto;
 
   @include clearfix;

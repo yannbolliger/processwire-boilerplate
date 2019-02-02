@@ -1,0 +1,39 @@
+
+
+@mixin slide-up-down($d: $duration-base) {
+  transform: translateY(0);
+  opacity: 1;
+  transition: transform $d, opacity $d;
+
+  &.hidden {
+    display: block!important;
+    transform: translateY(-10px);
+    opacity: 0;
+    transition: transform $d, opacity $d;
+  }
+}
+
+
+#contact {
+  form {
+    @include slide-up-down;
+
+    input, textarea {
+      display: inline-block;
+      width: 100%;
+    }
+
+    textarea {
+      resize: none;
+      min-height: 5em;
+    }
+
+    input[name="surname"] {
+      display: none;
+    }
+  }
+
+  #response {
+    @include slide-up-down;
+  }
+}

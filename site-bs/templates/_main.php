@@ -4,6 +4,8 @@
  * _main.php
  * Main markup file (multi-language)
  */
+
+ if ($disableMain) return;
 ?>
 
 <!DOCTYPE html>
@@ -18,7 +20,7 @@
 	<meta name="description" content="<?php echo $page->summary; ?>" />
 	<meta name="keywords" content="" />
 
-	<link rel="stylesheet" type="text/css" href="<?php echo $config->urls->templates?>styles/style.css" />
+	<link rel="stylesheet" type="text/css" href="<?= versionedAssetUrl('styles/style.css') ?>" />
 
 	<?php
 	// handle output of 'hreflang' link tags for multi-language
@@ -114,7 +116,8 @@
 	</footer>
 
 	<script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
-	<script type="text/javascript" src="<?php echo $config->urls->templates?>scripts/main.js" ></script>
+	<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.colorbox/1.6.4/jquery.colorbox-min.js"></script>-->
+	<script type="text/javascript" src="<?= versionedAssetUrl('scripts/main.js') ?>" ></script>
 
 </body>
 </html>
