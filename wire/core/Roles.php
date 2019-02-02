@@ -28,7 +28,7 @@ class Roles extends PagesType {
 	 * 
 	 * #pw-internal
 	 * 
-	 * @return Role
+	 * @return Role|NullPage|Page
 	 * @throws WireException
 	 * 
 	 */
@@ -84,8 +84,8 @@ class Roles extends PagesType {
 	 *
 	 * #pw-group-manipulation
 	 *
-	 * @param string $name Name of permission you want to add, i.e. "hello-world"
-	 * @return Role|Page|NullPage Returns a Permission page on success, or a NullPage on error
+	 * @param string $name Name of role you want to add, i.e. "hello-world"
+	 * @return Role|Page|NullPage Returns a Role page on success, or a NullPage on error
 	 *
 	 */
 	public function ___add($name) {
@@ -96,11 +96,32 @@ class Roles extends PagesType {
 	 * Ensure that every role has at least 'page-view' permission
 	 * 
 	 * #pw-internal
+	 * 
+	 * @param Page $page
 	 *
 	 */
 	protected function loaded(Page $page) {
 		if(!$page->permissions->has("name=page-view")) {
 			$page->permissions->add($this->wire('permissions')->get("name=page-view")); 
 		}
+	}
+	
+	/**
+	 * Hook called when a page and its data have been deleted
+	 *
+	 * #pw-internal
+	 *
+	 * @param Page $page
+	 *
+	 */
+	public function ___deleted(Page $page) { 
+		foreach($this->wire('templates') as $template) {
+			/** @var Template $template */
+			if(!$template->useRoles) continue;
+			$template->removeRole($page, 'all'); 
+			if($template->isChanged()) $template->save();
+		}
+
+		parent::___deleted($page);
 	}
 }

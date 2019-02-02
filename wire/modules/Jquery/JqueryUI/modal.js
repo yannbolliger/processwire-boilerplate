@@ -166,6 +166,7 @@ function pwModalWindow(href, options, size) {
 	}
 	var $iframe = jQuery('<iframe class="pw-modal-window" frameborder="0" src="' + url + '"></iframe>');
 	$iframe.attr('id', 'pw-modal-window-' + (pwModalWindows.length+1));
+	pwModalWindows[pwModalWindows.length] = $iframe;
 	
 	if(typeof size == "undefined" || size.length == 0) var size = 'large';
 	var settings = pwModalWindowSettings(size);
@@ -188,7 +189,8 @@ function pwModalWindow(href, options, size) {
 	$iframe.data('settings', settings);
 	$iframe.load(function() {
 		if(typeof settings.title == "undefined" || !settings.title) {
-			$iframe.dialog('option', 'title', $iframe.contents().find('title').text());
+			var title = jQuery('<textarea />').text($iframe.contents().find('title').text()).html();
+			$iframe.dialog('option', 'title', title); 
 		}
 		$iframe.contents().find('form').css('-webkit-backface-visibility', 'hidden'); // to prevent jumping
 	}); 
@@ -260,11 +262,11 @@ function pwModalOpenEvent(e) {
 
 	var settings = {
 		title: $a.attr('title'),
-		close: function(event, ui) {
+		close: function(e, ui) {
 			// abort is true when the "x" button at top right of window is what closed the window
-			var abort = typeof event.toElement != "undefined" && jQuery(event.toElement).hasClass('fa-times');
+			var abort = typeof e.originalEvent != "undefined" && jQuery(e.originalEvent.target).closest('.ui-dialog-titlebar-close').length > 0;
 			var eventData = { 
-				event: event, 
+				event: e, 
 				ui: ui, 
 				abort: abort 
 			};
@@ -331,7 +333,8 @@ function pwModalOpenEvent(e) {
 
 		if(closeOnLoad) {
 			// this occurs when item saved and resulting page is loaded
-			if($icontents.find(".NoticeError, .NoticeWarning, .ui-state-error").length == 0) {
+			var $errorItems = $icontents.find(".NoticeError, .ui-state-error");
+			if($errorItems.length == 0) {
 				// if there are no error messages present, close the window
 				if(typeof Notifications != "undefined") {
 					var messages = [];
@@ -346,6 +349,9 @@ function pwModalOpenEvent(e) {
 				}
 				$iframe.dialog('close');
 				return;
+			} else {
+				// console.log('error items prevent modal autoclose:');
+				// console.log($errorItems);
 			}
 		}
 

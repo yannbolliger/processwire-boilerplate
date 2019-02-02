@@ -134,15 +134,22 @@ var pwPanels = {
 		
 		// allow for use of data-href or href attribute that references URL to load in panel
 		if(typeof panelURL == 'undefined' || !panelURL.length) panelURL = $toggler.attr('href');
-		
+
 		if(typeof panelURL != 'undefined' && panelURL.length) {
+			var hash = '';
+			if(panelURL.indexOf('#') > -1) {
+				var parts = panelURL.split('#');
+				panelURL = parts[0];
+				hash = '#' + parts[1];
+			}
 			panelURL += (panelURL.indexOf('?') > -1 ? '&' : '?') + 'modal=panel&pw_panel=';
-			
+
 			if($toggler !== null && $toggler.hasClass('pw-panel-links')) {
 				panelURL += '2'; // don't update target of links in panel
 			} else {
 				panelURL += '1'; // update target of links in panel
 			}
+			panelURL += hash;
 		}
 		
 		var $icon = $('<i />')
@@ -156,7 +163,7 @@ var pwPanels = {
 			.attr('href', panelURL)
 			.on('click', pwPanels.buttonClickEvent)
 			.on('mouseover', pwPanels.buttonMouseoverEvent)
-			.on('mouseut', pwPanels.buttonMouseoutEvent)
+			.on('mouseout', pwPanels.buttonMouseoutEvent)
 			.append($span);
 		
 		var $panel = $('<div />')
@@ -215,7 +222,9 @@ var pwPanels = {
 		}
 
 		if(typeof text != "undefined" && text.length) {
-			$btn.children('.ui-button-text').text(text);
+			var $btnText = $btn.children('.ui-button-text');
+			var $text = $("<span />").text(text);
+			$btnText.html('<span>' + $text.text() + '</span>');
 			$btn.addClass('pw-panel-button-text');
 			btnExtraPx = 7;
 			//$btn.css(btnPos, (-1 * ($btn.height() + 7)) + 'px');
@@ -373,6 +382,9 @@ var pwPanels = {
 				// force it to create new iframe on every load
 				$panel.find('iframe.pw-panel-content').remove();
 			}
+			
+			// trigger panel-closed event
+			$(document).trigger('pw-panel-closed', $panel);
 
 		} else {
 
@@ -433,6 +445,9 @@ var pwPanels = {
 		
 			// indicate that this panel has been opened and is initialized
 			$panel.addClass('pw-panel-container-init');
+			
+			// trigger panel-opened event
+			$(document).trigger('pw-panel-opened', $panel);
 		}
 
 		return false;

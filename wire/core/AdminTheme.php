@@ -10,7 +10,7 @@
  * This file is licensed under the MIT license. 
  * https://processwire.com/about/license/mit/
  * 
- * ProcessWire 3.x, Copyright 2016 by Ryan Cramer
+ * ProcessWire 3.x, Copyright 2018 by Ryan Cramer
  * https://processwire.com
  * 
  * @property int|string $version Current admin theme version
@@ -63,6 +63,14 @@ abstract class AdminTheme extends WireData implements Module {
 	protected $bodyClasses = array();
 
 	/**
+	 * General purpose classes indexed by name
+	 *
+	 * @var array
+	 *
+	 */
+	protected $classes = array();
+
+	/**
 	 * Extra markup regions
 	 * 
 	 * @var array
@@ -95,9 +103,11 @@ abstract class AdminTheme extends WireData implements Module {
 	}
 
 	/**
-	 * Initialize the admin theme systme and determine which admin theme should be used
+	 * Initialize the admin theme system and determine which admin theme should be used
 	 *
 	 * All admin themes must call this init() method to register themselves. 
+	 * 
+	 * Note: this should be called after API ready. 
 	 *
 	 */
 	public function init() { 
@@ -116,6 +126,11 @@ abstract class AdminTheme extends WireData implements Module {
 		// if admin theme has already been set, then no need to continue
 		if($this->wire('adminTheme')) return; 
 
+		/** @var Config $config */
+		$config = $this->wire('config');
+		/** @var Session $session */
+		$session = $this->wire('session');
+		/** @var string $adminTheme */
 		$adminTheme = $this->wire('user')->admin_theme; 
 
 		if($adminTheme) {
@@ -129,19 +144,20 @@ abstract class AdminTheme extends WireData implements Module {
 		}
 
 		// adjust $config adminThumbOptions[scale] for auto detect when requested
-		$o = $this->wire('config')->adminThumbOptions; 
+		$o = $config->adminThumbOptions; 
 		if($o && isset($o['scale']) && $o['scale'] === 1) {
-			$o['scale'] = $this->wire('session')->hidpi ? 0.5 : 1.0; 
-			$this->wire('config')->adminThumbOptions = $o;
+			$o['scale'] = $session->hidpi ? 0.5 : 1.0; 
+			$config->adminThumbOptions = $o;
 		}
 
-		$this->config->js('modals', $this->config->modals); 
+		$config->js('modals', $config->modals); 
 		
-		if($this->wire('session')->hidpi) $this->addBodyClass('hidpi-device');
-		if($this->wire('session')->touch) $this->addBodyClass('touch-device'); 
+		if($session->hidpi) $this->addBodyClass('hidpi-device');
+		if($session->touch) $this->addBodyClass('touch-device'); 
+		
 		$this->addBodyClass($this->className());
 	}
-	
+
 	public function get($key) {
 		if($key == 'version') return $this->version;
 		return parent::get($key); 
@@ -224,7 +240,7 @@ abstract class AdminTheme extends WireData implements Module {
 	 * 
 	 */
 	public function addBodyClass($className) {
-		$this->bodyClasses[$className] = $className; 
+		$this->addClass('body', $className);
 	}
 
 	/**
@@ -234,7 +250,75 @@ abstract class AdminTheme extends WireData implements Module {
 	 * 
 	 */
 	public function getBodyClass() {
-		return trim(implode(' ', $this->bodyClasses)); 
+		return $this->getClass('body'); 
+	}
+
+	/**
+	 * Return class for a given named item or blank if none available
+	 * 
+	 * Omit the first argument to return all classes in an array.
+	 * 
+	 * @param string $name Tag or item name, i.e. “input”, or omit to return all defined [tags=classes]
+	 * @param bool $getArray Specify true to return array of class name(s) rather than string (default=false). $tagName argument required.
+	 * @return string|array Returns string or array of class names, or array of all [tags=classes] or $tagName argument is empty.
+	 * 
+	 */
+	public function getClass($name = '', $getArray = false) {
+		if(empty($name)) {
+			return $this->classes;
+		} else if(isset($this->classes[$name])) {
+			return $getArray ? explode(' ', $this->classes[$name]) : $this->classes[$name];
+		} else {
+			return $getArray ? array() : '';
+		}
+	}
+
+	/**
+	 * Add class for given named item
+	 * 
+	 * Default behavior is to merge classes if existing classes are already present for given item $name.
+	 * 
+	 * #pw-internal
+	 * 
+	 * @param string $name
+	 * @param string|array $class
+	 * @param bool $replace Specify true to replace any existing classes rather than merging them
+	 * 
+	 */
+	public function addClass($name, $class, $replace = false) {
+		if(is_array($class)) {
+			foreach($class as $c) {
+				$this->addClass($name, $c);
+			}
+		} else if(!$replace && isset($this->classes[$name])) {
+			$classes = $this->classes[$name];
+			if(strpos($classes, $class) !== false) {
+				// avoid re-adding class if it is already present
+				if(array_search($class, explode(' ', $classes)) !== false) return; 
+			}
+			$this->classes[$name] = trim($classes . ' ' . ltrim($class));	
+		} else {
+			$this->classes[$name] = trim($class);
+		}
+	}
+
+	/**
+	 * Set classes for multiple tags
+	 * 
+	 * #pw-internal
+	 * 
+	 * @param array $classes Array of strings (class names) where keys are tag names
+	 * @param bool $replace Specify true to replace any existing classes rather than merge them (default=false)
+	 * 
+	 */
+	public function setClasses(array $classes, $replace = false) {
+		if($replace || empty($this->classes)) {
+			$this->classes = $classes;	
+		} else {
+			foreach($classes as $name => $class) {
+				$this->addClass($name, $class);
+			}
+		}
 	}
 
 	/**
@@ -269,7 +353,7 @@ abstract class AdminTheme extends WireData implements Module {
 			try {
 				$field->save();
 			} catch(\Exception $e) {
-				$this->error("Error creating 'admin_theme' field: " . $e->getMessage());
+				// $this->error("Error creating 'admin_theme' field: " . $e->getMessage());
 			}
 		}
 
@@ -304,6 +388,14 @@ abstract class AdminTheme extends WireData implements Module {
 	}
 	
 	public function ___uninstall() { 
+	
+		$defaultAdminTheme = $this->wire('config')->defaultAdminTheme;
+		if($defaultAdminTheme == $this->className()) {
+			throw new WireException(
+				"Cannot uninstall this admin theme because \$config->defaultAdminTheme = '$defaultAdminTheme'; " . 
+				"Please add this setting with a different value in /site/config.php"
+			); 
+		}
 
 		/*
 		if(self::$numAdminThemes > 1) return;

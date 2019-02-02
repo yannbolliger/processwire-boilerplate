@@ -5,7 +5,7 @@
  * Class to hold combined password/salt info. Uses Blowfish when possible.
  * Specially used by FieldtypePassword.
  * 
- * ProcessWire 3.x, Copyright 2016 by Ryan Cramer
+ * ProcessWire 3.x, Copyright 2018 by Ryan Cramer
  * https://processwire.com
  * 
  * @method setPass($value)
@@ -22,6 +22,12 @@ class Password extends Wire {
 		'salt' => '', 
 		'hash' => '',
 		);
+
+	/**
+	 * @var WireRandom|null
+	 * 
+	 */
+	protected $random = null;
 
 	/**
 	 * Does this Password match the given string?
@@ -159,70 +165,18 @@ class Password extends Wire {
 	/**
 	 * Generate a truly random base64 string of a certain length
 	 *
-	 * This is largely taken from Anthony Ferrara's password_compat library:
-	 * https://github.com/ircmaxell/password_compat/blob/master/lib/password.php
-	 * Modified for camelCase, variable names, and function-based context by Ryan.
+	 * See WireRandom::base64() for details
 	 *
 	 * @param int $requiredLength Length of string you want returned (default=22)
-	 * @param bool $fast Set to true for a faster, though less random string (default=false, only use true for non-password use)
-	 * @return string
+	 * @param array|bool $options Specify array of options or boolean to specify only `fast` option.
+	 *  - `fast` (bool): Use fastest, not cryptographically secure method (default=false). 
+	 *  - `test` (bool|array): Return tests in a string (bool true), or specify array(true) to return tests array (default=false).
+	 *    Note that if the test option is used, then the fast option is disabled. 
+	 * @return string|array Returns only array if you specify array for $test argument, otherwise returns string
 	 *
 	 */
-	public function randomBase64String($requiredLength = 22, $fast = false) {
-
-		$buffer = '';
-		$valid = false;
-
-		if($fast) {
-			// fast mode for non-password use, uses only mt_rand() generated characters		
-			$rawLength = $requiredLength;
-			
-		} else {
-			// for password use, slower
-			$rawLength = (int) ($requiredLength * 3 / 4 + 1);
-			
-			if(function_exists('mcrypt_create_iv')) {
-				// @operator added for PHP 7.1 which throws deprecated notice on this function call
-				$buffer = @mcrypt_create_iv($rawLength, MCRYPT_DEV_URANDOM);
-				if($buffer) $valid = true;
-			}
-
-			if(!$valid && function_exists('openssl_random_pseudo_bytes')) {
-				$buffer = openssl_random_pseudo_bytes($rawLength);
-				if($buffer) $valid = true;
-			}
-
-			if(!$valid && file_exists('/dev/urandom')) {
-				$f = @fopen('/dev/urandom', 'r');
-				if($f) {
-					$read = strlen($buffer);
-					while($read < $rawLength) {
-						$buffer .= fread($f, $rawLength - $read);
-						$read = strlen($buffer);
-					}
-					fclose($f);
-					if($read >= $rawLength) $valid = true;
-				}
-			}
-		}
-
-		if(!$valid || strlen($buffer) < $rawLength) {
-			$bl = strlen($buffer);
-			for($i = 0; $i < $rawLength; $i++) {
-				if($i < $bl) {
-					$buffer[$i] = $buffer[$i] ^ chr(mt_rand(0, 255));
-				} else {
-					$buffer .= chr(mt_rand(0, 255));
-				}
-			}
-		}
-
-		$salt = str_replace('+', '.', base64_encode($buffer));
-		$salt = substr($salt, 0, $requiredLength);
-		
-		//$salt .= $valid; // @todo: what was the point of this?j
-
-		return $salt;
+	public function randomBase64String($requiredLength = 22, $options = array()) {
+		return $this->random()->base64($requiredLength, $options);
 	}
 
 	/**
@@ -301,14 +255,19 @@ class Password extends Wire {
 
 	/**
 	 * Return a pseudo-random alpha or alphanumeric character
-	 *
+	 * 
+	 * This method may be deprecated at some point, so it is preferable to use the 
+	 * `randomLetters()` or `randomAlnum()` methods instead, when you can count on 
+	 * the PW version being 3.0.109 or higher. 
+	 * 
 	 * @param int $qty Number of random characters requested
 	 * @param bool $alphanumeric Specify true to allow digits in return value
 	 * @param array $disallow Characters that may not be used in return value
 	 * @return string
+	 * @deprecated use WireRandom::alpha() instead
 	 *
 	 */
-	protected function randomAlpha($qty = 1, $alphanumeric = false, $disallow = array()) {
+	public function randomAlpha($qty = 1, $alphanumeric = false, $disallow = array()) {
 		$letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 		$digits = '0123456789';
 		if($alphanumeric) $letters .= $digits;
@@ -325,167 +284,68 @@ class Password extends Wire {
 	}
 
 	/**
+	 * Return cryptographically secure random alphanumeric, alpha or numeric string
+	 * 
+	 * @param int $length Required length of string, or 0 for random length
+	 * @param array $options See WireRandom::alphanumeric() for options
+	 * @return string
+	 * @throws WireException
+	 * @since 3.0.109
+	 * @deprecated use WireRandom::alphanumeric() instead
+	 * 
+	 */
+	public function randomAlnum($length = 0, array $options = array()) {
+		return $this->random()->alphanumeric($length, $options); 
+	}
+
+	/**
+	 * Return string of random letters
+	 *
+	 * @param int $length Required length of string or 0 for random length
+	 * @param array $options See options for randomAlnum() method
+	 * @return string
+	 * @since 3.0.109
+	 * @deprecated use WireRandom::alpha() instead.
+	 *
+	 */
+	public function randomLetters($length = 0, array $options = array()) {
+		return $this->random()->alpha($length, $options);
+	}
+
+	/**
+	 * Return string of random digits
+	 * 
+	 * @param int $length Required length of string or 0 for random length
+	 * @param array $options See WireRandom::numeric() method
+	 * @return string
+	 * @since 3.0.109
+	 * @deprecated Use WireRandom::numeric() instead
+	 * 
+	 */
+	public function randomDigits($length = 0, array $options = array()) {
+		return $this->random()->numeric($length, $options);
+	}
+
+	/**
 	 * Generate and return a random password
 	 * 
-	 * Default settings of this method are to generate a random but readable password without characters that
-	 * tend to have readability issues, and using only ASCII characters (for broadest keyboard compatibility).
+	 * See WireRandom::pass() method for details. 
 	 * 
-	 * @param array $options Specify any of the following options (all optional):
-	 *  - `minLength` (int): Minimum lenth of returned value (default=7).
-	 *  - `maxLength` (int): Maximum lenth of returned value, will be exceeded if needed to meet other options (default=15).
-	 *  - `minLower` (int): Minimum number of lowercase characters required (default=1). 
-	 *  - `minUpper` (int): Minimum number of uppercase characters required (default=1).
-	 *  - `maxUpper` (int): Maximum number of uppercase characters allowed (0=any, -1=none, default=3).
-	 *  - `minDigits` (int): Minimum number of digits required (default=1).
-	 *  - `maxDigits` (int): Maximum number of digits allowed (0=any, -1=none, default=0). 
-	 *  - `minSymbols` (int): Minimum number of non-alpha, non-digit symbols required (default=0).
-	 *  - `maxSymbols` (int): Maximum number of non-alpha, non-digit symbols to allow (0=any, -1=none, default=3).
-	 *  - `useSymbols` (array): Array of characters to use as "symbols" in returned value (see method for default).
-	 *  - `disallow` (array): Disallowed characters that may be confused with others (default=O,0,I,1,l).
-	 *
+	 * @param array $options See WireRandom::pass() for options
 	 * @return string
 	 * 
 	 */
 	public function randomPass(array $options = array()) {
+		return $this->random()->pass($options);
+	}
 
-		$defaults = array(
-			'minLength' => 7, 
-			'maxLength' => 15,
-			'minUpper' => 1, 
-			'maxUpper' => 3, 
-			'minLower' => 1, 
-			'minDigits' => 1, 
-			'maxDigits' => 0, 
-			'minSymbols' => 0, 
-			'maxSymbols' => 3, 
-			'useSymbols' => array('@', '#', '$', '%', '^', '*', '_', '-', '+', '?', '(', ')', '!', '.', '=', '/'),
-			'disallow' => array('O', '0', 'I', '1', 'l'), 
-		);
-
-		$options = array_merge($defaults, $options);
-		$length = mt_rand($options['minLength'], $options['maxLength']);
-		$base64Symbols = array('/' , '.');
-		$_disallow = array(); // with both upper and lower versions
-		
-		foreach($options['disallow'] as $c) {
-			$c = strtolower($c);
-			$_disallow[$c] = $c;
-			$c = strtoupper($c);
-			$_disallow[$c] = $c;
-		}
-
-		// build foundation of password using base64 string
-		do {
-			$value = $this->randomBase64String($length);
-			$valid = preg_match('/[A-Z]/i', $value) && preg_match('/[0-9]/', $value);
-		} while(!$valid);
-
-		// limit amount of characters that are too common in base64 string
-		foreach($base64Symbols as $char) {
-			if(strpos($value, $char) === false) continue;
-			$c = $this->randomAlpha(1, true, $options['disallow']);
-			$value = str_replace($char, $c, $value);
-		}
-
-		// manage quantity of symbols
-		if($options['maxSymbols'] > -1) {
-			// ensure there are a certain quantity of symbols present
-			if($options['maxSymbols'] === 0) {
-				$numSymbols = mt_rand($options['minSymbols'], floor(strlen($value) / 2));
-			} else {
-				$numSymbols = mt_rand($options['minSymbols'], $options['maxSymbols']);
-			}
-			$symbols = $options['useSymbols'];
-			shuffle($symbols);
-			for($n = 0; $n < $numSymbols; $n++) {
-				$symbol = array_shift($symbols);
-				$value .= $symbol;
-			}
-		} else {
-			// no symbols, remove those commonly added in base64 string
-			$options['disallow'] = array_merge($options['disallow'], $base64Symbols);
-		}
-
-		// manage quantity of uppercase characters
-		if($options['maxUpper'] > 0 || ($options['minUpper'] > 0 && $options['maxUpper'] > -1)) {
-			// limit or establish the number of uppercase characters
-			if(!$options['maxUpper']) $options['maxUpper'] = floor(strlen($value) / 2);
-			$numUpper = mt_rand($options['minUpper'], $options['maxUpper']);
-			if($numUpper) {
-				$value = strtolower($value);
-				$test = $this->wire('sanitizer')->alpha($value);
-				if(strlen($test) < $numUpper) {
-					// there aren't enough characters present to meet requirements, so add some	
-					$value .= $this->randomAlpha($numUpper - strlen($test), false, $_disallow);
-				}
-				for($i = 0; $i < strlen($value); $i++) {
-					$c = strtoupper($value[$i]);
-					if(in_array($c, $options['disallow'])) continue;
-					if($c !== $value[$i]) $value[$i] = $c;
-					if($c >= 'A' && $c <= 'Z') $numUpper--;
-					if(!$numUpper) break;
-				}
-				// still need more? append new characters as needed
-				if($numUpper) $value .= strtoupper($this->randomAlpha($numUpper, false, $_disallow));
-			}
-
-		} else if($options['maxUpper'] < 0) {
-			// disallow upper
-			$value = strtolower($value);
-		}
-		
-		// manage quantity of lowercase characters
-		if($options['minLower'] > 0) {
-			$test = preg_replace('/[^a-z]/', '', $value);
-			if(strlen($test) < $options['minLower']) {
-				// needs more lowercase
-				$value .= strtolower($this->randomAlpha($options['minLower'] - strlen($test), false, $_disallow));
-			}
-		}
-	
-		// manage quantity of required digits
-		if($options['minDigits'] > 0) {
-			$test = $this->wire('sanitizer')->digits($value);
-			$test = str_replace($options['disallow'], '', $test);
-			$numDigits = $options['minDigits'] - strlen($test);
-			if($numDigits > 0) {
-				$value .= $this->randomAlpha($numDigits, 1, $options['disallow']);	
-			}
-		}
-		if($options['maxDigits'] > 0 || $options['maxDigits'] == -1) {
-			// a maximum number of digits specified
-			$numDigits = 0;
-			for($n = 0; $n < strlen($value); $n++) {
-				$c = $value[$n];
-				$isDigit = ctype_digit($c);
-				if($isDigit) $numDigits++;
-				if($isDigit && $numDigits > $options['maxDigits']) {
-					// convert digit to alpha
-					$value[$n] = strtolower($this->randomAlpha(1, false, $_disallow));
-				}
-			}
-		}
-
-		// replace any disallowed characters
-		foreach($options['disallow'] as $char) {
-			$pos = strpos($value, $char);
-			if($pos === false) continue;
-			if(ctype_digit($char)) {
-				$c = $this->randomAlpha(1, 1, $_disallow);
-			} else if(strtoupper($char) === $char) {
-				$c = strtoupper($this->randomAlpha(1, false, $_disallow));
-			} else {
-				$c = strtolower($this->randomAlpha(1, false, $_disallow));
-			}
-			$value = str_replace($char, $c, $value);
-		}
-	
-		// randomize, in case any operations above need it
-		$value = str_split($value);
-		shuffle($value);
-		$value = implode('', $value);
-
-		return $value;
+	/**
+	 * @return WireRandom
+	 * 
+	 */
+	protected function random() {
+		if($this->random === null) $this->random = $this->wire(new WireRandom());
+		return $this->random;
 	}
 	
 	public function __toString() {

@@ -8,6 +8,48 @@
  *
  */
 
+
+
+/**
+* Truncate text to a wordwrap.
+*
+* @param String text
+* @param int optional maximal length of the text
+* @return string
+*/
+function truncateText($text, $maxlength = 200) {
+	// for the three points at the end
+	$maxlength -= 1;
+
+	// truncate to max length
+	$text = substr(strip_tags($text), 0, $maxlength);
+	// check if we've truncated in the middle of a word
+	if (strlen(rtrim($text, ' .!?,;')) == $maxlength) {
+		// truncate to last word
+		$text = substr($text, 0, strrpos($text, ' '));
+	}
+	return trim($text) . "&hellip;";
+}
+
+/**
+* Render a nice list of files with icon and name/description and a title.
+*
+* @param WireArray $files of files
+* @return String html or empty if no files
+*/
+function renderFiles($files) {
+	if ($files->count == 0) { return ""; }
+
+	$list = "";
+	foreach($files as $file) {
+		$desc = $file->description($user->language);
+	  $text = ($desc != "") ? $desc : $file->name;
+
+	  $list .= "<li> <a href='{$file->url}'>$text</a> </li>";
+	}
+	return "<div class='files'> <h4>Dateien</h4> <ul>{$list}</ul> </div>";
+}
+
 /**
  * Given a group of pages, render a simple <ul> navigation
  *

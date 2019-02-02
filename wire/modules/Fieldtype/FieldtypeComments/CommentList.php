@@ -48,6 +48,7 @@ class CommentList extends Wire implements CommentListInterface {
 	protected $options = array(
 		'headline' => '', 	// '<h3>Comments</h3>', 
 		'commentHeader' => '', 	// 'Posted by {cite} on {created} {stars}',
+		'commentFooter' => '', 
 		'dateFormat' => '', 	// 'm/d/y g:ia', 
 		'encoding' => 'UTF-8', 
 		'admin' => false, 	// shows unapproved comments if true
@@ -141,6 +142,45 @@ class CommentList extends Wire implements CommentListInterface {
 		
 		return $out; 
 	}
+
+	/**
+	 * Populate comment {variable} placeholders
+	 * 
+	 * @param Comment $comment
+	 * @param string $out
+	 * @param array $placeholders Additional placeholders to populate as name => value (exclude the brackets)
+	 * @return string
+	 * 
+	 */
+	protected function populatePlaceholders(Comment $comment, $out, $placeholders = array()) {
+		
+		if(empty($out) || strpos($out, '{') === false) return $out;
+		
+		foreach($placeholders as $key => $value) {
+			$key = '{' . $key . '}';	
+			if(strpos($out, $key) === false) continue;
+			$out = str_replace($key, $value, $out);
+		}
+		
+		if(strpos($out, '{votes}') !== false) {
+			$out = str_replace('{votes}', $this->renderVotes($comment), $out);
+		}
+		if(strpos($out, '{stars}') !== false) {
+			$out = str_replace('{stars}', $this->renderStars($comment), $out);
+		}
+		
+		if(strpos($out, '{url}') !== false) {
+			$out = str_replace('{url}', $comment->getPage()->url() . '#Comment' . $comment->id, $out);
+		}
+		
+		if(strpos($out, '{page.') !== false) {
+			$page = $comment->getPage();
+			$out = str_replace('{page.', '{', $out);
+			$out = $page->getMarkup($out);
+		}
+		
+		return $out;
+	}
 	
 	/**
 	 * Render the comment
@@ -171,22 +211,29 @@ class CommentList extends Wire implements CommentListInterface {
 		if($comment->website) $website = $comment->getFormatted('website'); 
 		if($website) $cite = "<a href='$website' rel='nofollow' target='_blank'>$cite</a>";
 		$created = wireDate($this->options['dateFormat'], $comment->created); 
+		$placeholders = array(
+			'cite' => $cite, 
+			'created' => $created, 
+			'gravatar' => $gravatar
+		);
 		
 		if(empty($this->options['commentHeader'])) {
 			$header = "<span class='CommentCite'>$cite</span> <small class='CommentCreated'>$created</small> ";
 			if($this->options['useStars']) $header .= $this->renderStars($comment);
 			if($this->options['useVotes']) $header .= $this->renderVotes($comment); 
 		} else {
-			$header = str_replace(array('{cite}', '{created}'), array($cite, $created), $this->options['commentHeader']);
-			if(strpos($header, '{votes}') !== false) $header = str_replace('{votes}', $this->renderVotes($comment), $header);
-			if(strpos($header, '{stars}') !== false) $header = str_replace('{stars}', $this->renderStars($comment), $header);
+			$header = $this->populatePlaceholders($comment, $this->options['commentHeader'], $placeholders);
 		}
-		
+
+		$footer = $this->populatePlaceholders($comment, $this->options['commentFooter'], $placeholders); 
 		$liClass = '';
 		$replies = $this->options['depth'] > 0 ? $this->renderList($comment->id, $depth+1) : ''; 
 		if($replies) $liClass .= ' CommentHasReplies';
-		if($comment->status == Comment::statusPending) $liClass .= ' CommentStatusPending'; 
-			else if($comment->status == Comment::statusSpam) $liClass .= ' CommentStatusSpam';
+		if($comment->status == Comment::statusPending) {
+			$liClass .= ' CommentStatusPending';
+		} else if($comment->status == Comment::statusSpam) {
+			$liClass .= ' CommentStatusSpam';
+		}
 		
 		$out = 
 			"\n\t<li id='Comment{$comment->id}' class='CommentListItem$liClass' data-comment='$comment->id'>" . $gravatar . 
@@ -207,7 +254,7 @@ class CommentList extends Wire implements CommentListInterface {
 
 		if($this->options['depth'] > 0 && $depth < $this->options['depth']) {
 			$out .=
-				"\n\t\t<div class='CommentFooter'>" . 
+				"\n\t\t<div class='CommentFooter'>" . $footer . 
 				"\n\t\t\t<p class='CommentAction'>" .
 				"\n\t\t\t\t<a class='CommentActionReply' data-comment-id='$comment->id' href='#Comment{$comment->id}'>" . $this->options['replyLabel'] . "</a> " .
 				($permalink ? "\n\t\t\t\t$permalink" : "") . 
@@ -217,7 +264,7 @@ class CommentList extends Wire implements CommentListInterface {
 			if($replies) $out .= $replies;
 			
 		} else {
-			$out .= "\n\t\t<div class='CommentFooter'></div>";
+			$out .= "\n\t\t<div class='CommentFooter'>$footer</div>";
 		}
 	
 		$out .= "\n\t</li>";
@@ -268,11 +315,21 @@ class CommentList extends Wire implements CommentListInterface {
 	 * It also populates a session variable 'CommentApprovalMessage' with
 	 * a text message of what occurred.
 	 *
+	 * @param array $options
 	 * @return string
 	 *
 	 */
-	public function renderCheckActions() {
-
+	public function renderCheckActions(array $options = array()) {
+		
+		$defaults = array(
+			'messageIdAttr' => 'CommentApprovalMessage',
+			'messageMarkup' => "<p id='{id}' class='{class}'><strong>{message}</strong></p>", 
+			'linkMarkup' => "<a href='{href}'>{label}</a>",
+			'successClass' => 'success',
+			'errorClass' => 'error',
+		);
+		
+		$options = array_merge($defaults, $options);
 		$action = $this->wire('input')->get('comment_success');
 		if(empty($action) || $action === "1") return '';
 
@@ -280,11 +337,22 @@ class CommentList extends Wire implements CommentListInterface {
 			$message = $this->wire('session')->get('CommentApprovalMessage');
 			if($message) {
 				$this->wire('session')->remove('CommentApprovalMessage');
-				$class = $action === '2' ? 'success' : 'error';
+				$class = $action === '2' ? $options['successClass'] : $options['errorClass'];
 				$commentID = (int) $this->wire('input')->get('comment_id');
 				$message = $this->wire('sanitizer')->entities($message);
-				if($commentID) $message = str_replace($commentID, "<a href='#Comment$commentID'>$commentID</a>", $message);
-				return "<p id='CommentApprovalMessage' class='$class'><strong>$message</strong></p>";
+				if($commentID) {
+					$link = str_replace(
+						array('{href}', '{label}'), 
+						array("#Comment$commentID", $commentID), 
+						$options['linkMarkup']
+					);
+					$message = str_replace($commentID, $link, $message);
+				}
+				return str_replace(
+					array('{id}', '{class}', '{message}'), 
+					array($options['messageIdAttr'], $class, $message), 
+					$options['messageMarkup']
+				);
 			}
 		}
 
@@ -298,7 +366,7 @@ class CommentList extends Wire implements CommentListInterface {
 			if($info['commentID']) $url .= "comment_id=$info[commentID]&";
 			$url .= "comment_success=" . ($info['success'] ? '2' : '3');
 			$this->wire('session')->set('CommentApprovalMessage', $info['message']);
-			$this->wire('session')->redirect($url . '#CommentApprovalMessage');
+			$this->wire('session')->redirect($url . '#' . $options['messageIdAttr']);
 		}
 
 		return '';

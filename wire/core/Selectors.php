@@ -39,28 +39,10 @@ require_once(PROCESSWIRE_CORE_PATH . "Selector.php");
 class Selectors extends WireArray {
 
 	/**
-	 * Maximum length for a selector value
-	 *
-	 */
-	const maxValueLength = 500; 
-
-	/**
 	 * Maximum length for a selector operator
 	 *
 	 */
 	const maxOperatorLength = 10; 
-
-	/**
-	 * Maximum length for a selector field name
-	 *
-	 */
-	const maxFieldLength = 50; 
-
-	/**
-	 * Maximum number of selectors that can be present in a given selectors string
-	 *
-	 */
-	const maxSelectors = 20; 
 
 	/**
 	 * Static array of Selector types of $operator => $className
@@ -122,6 +104,7 @@ class Selectors extends WireArray {
 	 *
 	 */
 	public function __construct($selector = null) {
+		parent::__construct();
 		if(!is_null($selector)) $this->init($selector);
 	}
 
@@ -234,16 +217,51 @@ class Selectors extends WireArray {
 	}
 
 	/**
+	 * Return a string indicating the type of operator that it is, or false if not an operator
+	 * 
+	 * @param string $operator Operator to check
+	 * @param bool $is Change return value to just boolean true or false. 
+	 * @return bool|string
+	 * @since 3.0.108
+	 * 
+	 */
+	static public function getOperatorType($operator, $is = false) {
+		if(!isset(self::$selectorTypes[$operator])) return false;
+		$type = self::$selectorTypes[$operator];
+		// now double check that we can map it back, in case PHP filters anything in the isset()
+		$op = array_search($type, self::$selectorTypes); 
+		if($op === $operator) {
+			if($is) return true;
+			// Convert types like "SelectorEquals" to "Equals"
+			if(strpos($type, 'Selector') === 0) list(,$type) = explode('Selector', $type, 2);
+			return $type;
+		}
+		return false;
+	}
+
+	/**
+	 * Returns true if given string is a recognized operator, or false if not
+	 * 
+	 * @param string $operator
+	 * @return bool
+	 * @since 3.0.108
+	 * 
+	 */
+	static public function isOperator($operator) {
+		return self::getOperatorType($operator, true);
+	}
+
+	/**
 	 * Does the given string have an operator in it? 
 	 * 
 	 * #pw-group-static-helpers
 	 *
-	 * @param string $str
+	 * @param string $str String that might contain an operator
+	 * @param bool $getOperator Specify true to return the operator that was found, or false if not (since 3.0.108)
 	 * @return bool
 	 *
 	 */
-	static public function stringHasOperator($str) {
-		
+	static public function stringHasOperator($str, $getOperator = false) {
 		
 		static $letters = 'abcdefghijklmnopqrstuvwxyz';
 		static $digits = '_0123456789';
@@ -285,8 +303,13 @@ class Selectors extends WireArray {
 				} 
 			}
 			
-			if($has) break;
+			if($has) {
+				if($getOperator) $getOperator = $operator;
+				break;
+			}
 		}
+		
+		if($has && $getOperator) return $getOperator;
 		
 		return $has; 
 	}
@@ -377,7 +400,7 @@ class Selectors extends WireArray {
 	 *
 	 * @param string $field Field name or names (separated by a pipe)
 	 * @param string $operator Operator, i.e. "="
-	 * @param string $value Value or values (separated by a pipe)
+	 * @param string|array $value Value or values (separated by a pipe)
 	 * @return Selector Returns the correct type of `Selector` object that corresponds to the given `$operator`.
 	 * @throws WireException
 	 *
@@ -411,8 +434,6 @@ class Selectors extends WireArray {
 	 */
 	protected function extractString($str) {
 
-		$cnt = 0; 
-		
 		while(strlen($str)) {
 
 			$not = false;
@@ -423,7 +444,7 @@ class Selectors extends WireArray {
 			}
 			$group = $this->extractGroup($str); 	
 			$field = $this->extractField($str); 
-			$operator = $this->extractOperator($str, $this->getOperatorChars());
+			$operator = $this->extractOperator($str, self::getOperatorChars());
 			$value = $this->extractValue($str, $quote); 
 
 			if($this->parseVars && $quote == '[' && $this->valueHasVar($value)) {
@@ -442,8 +463,6 @@ class Selectors extends WireArray {
 				if($not) $selector->not = true; 
 				$this->add($selector); 
 			}
-
-			if(++$cnt > self::maxSelectors) break;
 		}
 
 	}
@@ -538,8 +557,18 @@ class Selectors extends WireArray {
 		
 		if($commaPos === false && $closingQuote) {
 			// if closing quote and comma didn't match, try to match just comma in case of "something"<space>,
-			$commaPos = strpos(substr($str, 1), ',');
-			if($commaPos !== false) $commaPos++;
+			$str1 = substr($str, 1);
+			$commaPos = strpos($str1, ',');
+			if($commaPos !== false) {
+				$closingQuotePos = strpos($str1, $closingQuote); 
+				if($closingQuotePos > $commaPos) {
+					// comma is in quotes and thus not one we want to work with
+					return false;
+				} else {
+					// increment by 1 since it was derived from a string at position 1 (rather than 0)
+					$commaPos++;
+				}
+			}
 		}
 
 		if($commaPos === false) {
@@ -682,7 +711,7 @@ class Selectors extends WireArray {
 		$len = strlen("$value");
 		if($len) {
 			$str = substr($str, $n);
-			if($len > self::maxValueLength) $value = substr($value, 0, self::maxValueLength);
+			// if($len > self::maxValueLength) $value = substr($value, 0, self::maxValueLength);
 		}
 
 		$str = ltrim($str, ' ,"\']})'); // should be executed even if blank value
@@ -1122,7 +1151,7 @@ class Selectors extends WireArray {
 			$_sanitize = $sanitize;
 			if(is_array($value)) $value = 'array'; // we don't allow arrays here
 			if(is_object($value)) $value = (string) $value;
-			if(is_int($value) || ctype_digit($value)) {
+			if(is_int($value) || (ctype_digit("$value") && strpos($value, '0') !== 0)) {
 				$value = (int) $value;
 				if($_sanitize == 'selectorValue') $_sanitize = ''; // no need to sanitize integer to string
 			}
@@ -1218,6 +1247,47 @@ class Selectors extends WireArray {
 			$s .= "$key=$value, ";
 		}
 		return rtrim($s, ", "); 
+	}
+
+	/**
+	 * Get the first selector that uses given field name
+	 * 
+	 * This is useful for quickly retrieving values of reserved properties like "include", "limit", "start", etc. 
+	 * 
+	 * Using **$or:** By default this excludes selectors that have fields in an OR expression, like "a|b|c". 
+	 * So if you specified field "a" it would not be matched. If you wanted it to still match, specify true 
+	 * for the $or argument.
+	 * 
+	 * Using **$all:** By default only the first matching selector is returned. If you want it to return all 
+	 * matching selectors in an array, then specify true for the $all argument. This changes the return value
+	 * to always be an array of Selector objects, or a blank array if no match. 
+	 * 
+	 * @param string $fieldName Name of field to return value for (i.e. "include", "limit", etc.)
+	 * @param bool $or Allow fields that appear in OR expressions? (default=false)
+	 * @param bool $all Return an array of all matching Selector objects? (default=false)
+	 * @return Selector|array|null Returns null if field not present in selectors (or blank array if $all mode)
+	 * 
+	 */
+	public function getSelectorByField($fieldName, $or = false, $all = false) {
+		
+		$selector = null;
+		$matches = array();
+		
+		foreach($this as $sel) {
+			if($or) {
+				if(!in_array($fieldName, $sel->fields)) continue;
+			} else {
+				if($sel->field() !== $fieldName) continue;
+			}
+			if($all) {
+				$matches[] = $sel;
+			} else {
+				$selector = $sel;
+				break;
+			}
+		}
+		
+		return $all ? $matches : $selector;
 	}
 
 	/**

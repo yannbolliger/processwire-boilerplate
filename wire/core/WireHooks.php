@@ -152,6 +152,7 @@ class WireHooks {
 
 		// see if we can do a quick exit
 		if($method && $method !== '*' && !$this->isHookedOrParents($object, $method)) return $hooks;
+		
 
 		// first determine which local hooks when should include
 		if($type !== self::getHooksStatic) {
@@ -174,6 +175,7 @@ class WireHooks {
 
 		$needSort = false;
 		$namespace = __NAMESPACE__ ? __NAMESPACE__ . "\\" : "";
+		$objectParentNamespaces = array();
 
 		// join in static hooks
 		foreach($this->staticHooks as $className => $staticHooks) {
@@ -184,7 +186,21 @@ class WireHooks {
 					// objects in other namespaces
 					$_className = $_namespace . $className;
 					if(!$object instanceof $_className && $method !== '*') {
-						continue;
+						// object likely extends a class not in PW namespace, so check class parents instead
+						if(empty($objectParentNamespaces)) {
+							foreach(wireClassParents($object) as $nscn => $cn) {
+								list($ns,) = explode("\\", $nscn); 
+								$objectParentNamespaces[$ns] = $ns;	
+							}
+						}
+						$nsok = false;
+						foreach($objectParentNamespaces as $ns) {
+							$_className = "$ns\\$className";
+							if(!$object instanceof $_className) continue;
+							$nsok = true;
+							break;
+						}
+						if(!$nsok) continue;
 					}
 				} else {
 					continue;
@@ -657,11 +673,12 @@ class WireHooks {
 	 * @param Wire $object
 	 * @param string $method Method or property to run hooks for.
 	 * @param array $arguments Arguments passed to the method and hook.
-	 * @param string $type May be any one of the following: 
+	 * @param string|array $type May be any one of the following: 
 	 *  - method: for hooked methods (default)
 	 *  - property: for hooked properties
 	 *  - before: only run before hooks and do nothing else
 	 *  - after: only run after hooks and do nothing else
+	 *  - Or array[] of hooks (from getHooks method) to run (does not call hooked method)
 	 * @return array Returns an array with the following information:
 	 * 	[return] => The value returned from the hook or NULL if no value returned or hook didn't exist.
 	 *	[numHooksRun] => The number of hooks that were actually run.
@@ -672,33 +689,46 @@ class WireHooks {
 	public function runHooks(Wire $object, $method, $arguments, $type = 'method') {
 
 		$hookTimer = self::___debug ? $this->hookTimer($object, $method, $arguments) : null;
+		$realMethod = "___$method";
+		$cancelHooks = false;
+		$profiler = $this->wire->wire('profiler');
+		$hooks = null;
+		
+		if(is_array($type)) {
+			// array of hooks to run provided in $type argument
+			$hooks = $type;
+			$type = 'custom';
+		}
 
 		$result = array(
 			'return' => null,
 			'numHooksRun' => 0,
-			'methodExists' => false,
+			'methodExists' => ($type === 'method' ? method_exists($object, $realMethod) : false),
 			'replace' => false,
 		);
-
-		$realMethod = "___$method";
-		if($type == 'method') $result['methodExists'] = method_exists($object, $realMethod); 
-		// if(!$result['methodExists'] && !$this->hasHook($object, $method . ($type == 'method' ? '()' : ''))) {
-		if(!$result['methodExists'] && !$this->isHookedOrParents($object, $method, $type)) {
-			return $result; // exit quickly when we can
+		
+		if($type === 'method' || $type === 'property') {
+			if(!$result['methodExists'] && !$this->isHookedOrParents($object, $method, $type)) {
+				return $result; // exit quickly when we can
+			}
 		}
-
-		$hooks = $this->getHooks($object, $method);
-		$cancelHooks = false;
-		$profiler = $this->wire->wire('profiler');
+		
+		if($hooks === null) $hooks = $this->getHooks($object, $method);
 	
 		foreach(array('before', 'after') as $when) {
 
-			if($type === 'method' && $when === 'after' && $result['replace'] !== true) {
-				if($result['methodExists']) {
-					$result['return'] = $object->_callMethod($realMethod, $arguments);
-				} else {
-					$result['return'] = null;
+			if($type === 'method') {
+				if($when === 'after' && $result['replace'] !== true) {
+					if($result['methodExists']) {
+						$result['return'] = $object->_callMethod($realMethod, $arguments);
+					} else {
+						$result['return'] = null;
+					}
 				}
+			} else if($type === 'after') {
+				if($when === 'before') continue;
+			} else if($type === 'before') {
+				if($when === 'after') break;
 			}
 
 			foreach($hooks as $priority => $hook) {
@@ -769,12 +799,22 @@ class WireHooks {
 				}
 
 				if(is_null($toObject)) {
-					if(!is_callable($toMethod) && strpos($toMethod, "\\") === false && __NAMESPACE__) {
-						$_toMethod = "\\" . __NAMESPACE__ . "\\$toMethod";
-						// if(!is_callable($_toMethod)) $_toMethod = "\\$toMethod";
-						$toMethod = $_toMethod;
+					$toMethodCallable = is_callable($toMethod);
+					if(!$toMethodCallable && strpos($toMethod, "\\") === false && __NAMESPACE__) {
+						$_toMethod = $toMethod;
+						$toMethod = "\\" . __NAMESPACE__ . "\\$toMethod";
+						$toMethodCallable = is_callable($toMethod);
+						if(!$toMethodCallable) {
+							$toMethod = "\\$_toMethod";
+							$toMethodCallable = is_callable($toMethod);
+						}
 					}
-					$toMethod($event);
+					if($toMethodCallable) {
+						$returnValue = $toMethod($event);
+					} else {
+						// hook fail, not callable
+						$returnValue = null;
+					}
 				} else {
 					/** @var Wire $toObject */
 					if($hook['toPublic']) {
@@ -784,11 +824,17 @@ class WireHooks {
 						// protected or private
 						$returnValue = $toObject->_callMethod($toMethod, array($event));
 					}
-					// @todo allow for use of $returnValue as alternative to $event->return
-					if($returnValue) {}
+					$toMethodCallable = true; 
+				}
+
+				if($returnValue !== null) {
+					// hook method/func had an explicit return statement with a value
+					// allow for use of $returnValue as alternative to $event->return?
 				}
 				
 				if($profilerEvent) $profiler->stop($profilerEvent);
+				
+				if(!$toMethodCallable) continue;
 
 				$result['numHooksRun']++;
 				
@@ -809,6 +855,26 @@ class WireHooks {
 		if($hookTimer) Debug::saveTimer($hookTimer);
 
 		return $result;
+	}
+
+	/**
+	 * Filter and return hooks matching given property and value
+	 * 
+	 * @param array $hooks Hooks from getHooks() method
+	 * @param string $property Property name from hook (or hook options)
+	 * @param string|bool|int $value Value to match
+	 * @return array
+	 * 
+	 */
+	public function filterHooks(array $hooks, $property, $value) {
+		foreach($hooks as $key => $hook) {
+			if(array_key_exists($property, $hook)) {
+				if($hook[$property] !== $value) unset($hooks[$key]); 
+			} else if(array_key_exists($property, $hook['options'])) {
+				if($hook['options'][$property] !== $value) unset($hooks[$key]); 
+			}
+		}
+		return $hooks;	
 	}
 
 	/**
@@ -878,7 +944,11 @@ class WireHooks {
 	public function getAllLocalHooks() {
 		return $this->allLocalHooks;
 	}
-	
+
+	/**
+	 * @return string
+	 * 
+	 */
 	public function className() {
 		return wireClassName($this, false);
 	}

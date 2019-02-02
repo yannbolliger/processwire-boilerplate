@@ -1,3 +1,10 @@
+
+/*****************************************************************************************************************
+ * ProcessWire InputfieldImage
+ * 
+ * Copyright 2017 by ProcessWire
+ * 
+ */
 function InputfieldImage($) {
 	
 	// When uploading a file in place: .gridItem that file(s) will be placed before
@@ -22,6 +29,9 @@ function InputfieldImage($) {
 	
 	// grid items to retry for sizing by setGridSize() methods	
 	var retryGridItems = [];
+
+	// true when the grid is being resized with the slider
+	var gridSliding = false;
 
 	/**
 	 * Whether or not AJAX drag/drop upload is allowed?
@@ -118,7 +128,7 @@ function InputfieldImage($) {
 				});
 				$el.removeClass('InputfieldImageSorting');
 			},
-			cancel: ".InputfieldImageEdit"
+			cancel: ".InputfieldImageEdit,.focusArea,input,textarea,button,select,option"
 		};
 
 		$el.sortable(sortableOptions);
@@ -225,8 +235,9 @@ function InputfieldImage($) {
 	function checkInputfieldWidth($inputfield) {
 		
 		var narrowItems = [];
+		var mediumItems = [];
 		var wideItems = [];
-		var ni = 0, wi = 0;
+		var ni = 0, mi = 0, wi = 0;
 		var $inputfields;
 	
 		if(typeof $inputfield == "undefined") {
@@ -235,7 +246,7 @@ function InputfieldImage($) {
 			$inputfields = $inputfield;
 		}
 	
-		$inputfields.removeClass('InputfieldImageNarrow');
+		$inputfields.removeClass('InputfieldImageNarrow InputfieldImageMedium InputfieldImageWide');
 		
 		$inputfields.each(function() {
 			var $item = $(this);
@@ -244,12 +255,26 @@ function InputfieldImage($) {
 			if(width <= 500) {
 				narrowItems[ni] = $item;
 				ni++;
+			} else if(width <= 900) {
+				mediumItems[mi] = $item;
+				mi++;
+			} else {
+				wideItems[wi] = $item;
+				wi++;
 			}
 		});
 		
 		for(var n = 0; n < ni; n++) {
 			var $item = narrowItems[n];	
 			$item.addClass('InputfieldImageNarrow');
+		}
+		for(var n = 0; n < mi; n++) {
+			var $item = mediumItems[n];
+			$item.addClass('InputfieldImageMedium');
+		}
+		for(var n = 0; n < wi; n++) {
+			var $item = wideItems[n];
+			$item.addClass('InputfieldImageWide');
 		}
 	}
 
@@ -258,6 +283,10 @@ function InputfieldImage($) {
 	 * 
 	 */
 	function windowResize() {
+		$('.focusArea.focusActive').each(function() {
+			var $edit = $(this).closest('.InputfieldImageEdit, .gridImage'); 
+			if($edit.length) stopFocus($edit);
+		}); 
 		updateGrid();
 		checkInputfieldWidth();
 	}
@@ -296,11 +325,10 @@ function InputfieldImage($) {
 	 */
 	function setupEdit($el, $edit) {
 		
-		if($el.closest('.InputfieldImageEditAll').length) return;
+		if($el.closest('.InputfieldImageEditAll').length) return; // edit all mode
 		
 		var $img = $edit.find(".InputfieldImageEdit__image");
 		var $thumb = $el.find("img");
-		
 		
 		$img.attr({
 			src: $thumb.attr("data-original"),
@@ -326,12 +354,380 @@ function InputfieldImage($) {
 			.find("img")
 			.add($img)
 			.magnificPopup(options);
-			//.addClass('magnificInit');
 
 		// move all of the .ImageData elements to the edit panel
 		$edit.find(".InputfieldImageEdit__edit")
 			.attr("data-current", $el.attr("id"))
 			.append($el.find(".ImageData").children().not(".InputfieldFileSort"));
+	}
+
+	/**
+	 * Setup image for a draggable focus area and optional zoom slider
+	 * 
+	 * @param $edit Image editor container (.InputfieldImageEdit or .gridImage)
+	 * 
+	 */
+	function startFocus($edit) {
+		
+		var $img, $el, $thumb, $input, $focusArea, $focusCircle, $inputfield, 
+			focusData = null, gridSize, mode, $zoomSlider, $zoomBox, lastZoomPercent = 0,
+			useZoomFocus = false;
+		
+		$inputfield = $edit.closest('.Inputfield');
+		gridSize = getCookieData($inputfield, 'size');
+		mode = getCookieData($inputfield, 'mode');
+		
+		if($inputfield.hasClass('InputfieldImageFocusZoom')) useZoomFocus = true;
+		
+		if($edit.hasClass('gridImage')) {
+			// list mode
+			$el = $edit;
+			$img = $edit.find('.gridImage__overflow').find('img');
+			$thumb = $img;
+		} else {
+			// thumbnail click for editor mode
+			$el = $('#' + $edit.attr('data-for'));
+			$img = $edit.find('.InputfieldImageEdit__image');
+			$thumb = $el.find('.gridImage__overflow').find('img');
+		}
+	
+		// get the focus object, optionally for a specific focusStr
+		function getFocus(focusStr) {
+			
+			if(typeof focusStr == "undefined") {
+				if(focusData !== null) return focusData;
+				var $input = $edit.find('.InputfieldImageFocus');
+				var focusStr = $input.val();
+			}
+			
+			var a = focusStr.split(' ');
+			var top =  (typeof a[0] == "undefined" ? 50.0 : parseFloat(a[0]));
+			var left = (typeof a[1] == "undefined" ? 50.0 : parseFloat(a[1]));
+			var zoom = (typeof a[2] == "undefined" ? 0 : parseInt(a[2]));
+			
+			focusData = {
+				'top': top > 100 ? 100 : top, 
+				'left': left > 100 ? 100 : left, 
+				'zoom': zoom > 100 ? 0 : zoom
+			};
+			
+			return focusData;
+		}
+	
+		// get focus string
+		function getFocusStr(focusObj) {
+			if(typeof focusObj == "undefined") focusObj = getFocus();
+			return focusObj.top + ' ' + focusObj.left + ' ' + focusObj.zoom;
+		}
+	
+		// get single focus property: top left or zoom
+		function getFocusProperty(property) {
+			var focus = getFocus();	
+			return focus[property];
+		}
+
+		// set focus for top left and zoom
+		function setFocus(focusObj) {
+			focusData = focusObj;
+			var focusStr = focusObj.top + ' ' + focusObj.left + ' ' + focusObj.zoom;
+			$thumb.attr('data-focus', focusStr); // for consumption outside startFocus()
+			$input = $edit.find('.InputfieldImageFocus');
+			if(focusStr != $input.val()) {
+				$input.val(focusStr).trigger('change');
+			}
+		}
+
+		// set just one focus property (top, left or zoom)
+		function setFocusProperty(property, value) {
+			var focus = getFocus();
+			focus[property] = value;
+			setFocus(focus);
+		}
+		
+		 // Set the position of the draggable focus item
+		function setFocusDragPosition() {
+			var focus = getFocus();
+			var $overlay = $focusCircle.parent();
+			var w = $overlay.width();
+			var h = $overlay.height();
+			var x = Math.round((focus.left / 100) * w);
+			var y = Math.round((focus.top / 100) * h);
+
+			if(x < 0) x = 0;
+			if(y < 0) y = 0;
+			if(x > w) x = w; // horst: just to be on the safe side with following or actual code changes
+			if(y > h) y = h; 
+			
+			$focusCircle.css({
+				'top': y + 'px',
+				'left': x + 'px'
+			});
+		}
+	
+		// setup focus area (div that contains all the focus stuff)
+		$focusArea = $img.siblings('.focusArea'); 
+		if(!$focusArea.length) {
+			$focusArea = $('<div />').addClass('focusArea');
+			$img.after($focusArea);
+		}
+		$focusArea.css({
+			'height': $img.height() + 'px',
+			'width': $img.width() + 'px',
+			'background-color': 'rgba(0,0,0,0.7)'
+		}).addClass('focusActive');
+
+		// set the draggable circle for focus
+		$focusCircle = $focusArea.find('.focusCircle'); 
+		if(!$focusCircle.length) {
+			$focusCircle = $("<div />").addClass('focusCircle');
+			$focusArea.append($focusCircle);
+		}
+	
+		// indicate active state for focusing, used by stopFocus()
+		$img.parent().addClass('focusWrap');
+	
+		// set the initial position for the focus circle 
+		setFocusDragPosition();
+	
+		// function called whenever the slider is moved or circle is dragged with zoom active
+		var zoomSlide = function(zoomPercent) {
+
+			//var zoomBoxSize, focusCircleSize, focus, top, left, scale, faWidth, faHeight;
+			var zoomBoxSize, focus, faWidth, faHeight;
+
+			// if no zoomPercent argument provided, use the last one
+			if(typeof zoomPercent == "undefined") zoomPercent = lastZoomPercent;
+			lastZoomPercent = zoomPercent;
+			faWidth = $focusArea.width();
+			faHeight = $focusArea.height();
+
+			if(faWidth > faHeight) {
+				$zoomBox.height((100 - zoomPercent) + '%'); // set width in percent
+				zoomBoxSize = $zoomBox.height(); // get width in pixels
+				$zoomBox.width(zoomBoxSize); // match width to ensure square zoom box
+			} else {
+				$zoomBox.width((100 - zoomPercent) + '%'); // set width in percent
+				zoomBoxSize = $zoomBox.width(); // get width in pixels
+				$zoomBox.height(zoomBoxSize); // match width to ensure square zoom box
+			}
+
+			// apply the zoom box position
+			focus = getFocus();
+			var crop = getFocusZoomCropDimensions(focus.left, focus.top, zoomPercent, faWidth, faHeight, zoomBoxSize);
+			$zoomBox.css({
+				'top': crop.top + 'px',
+				'left': crop.left + 'px',
+				'background-position': '-' + crop.left + 'px -' + crop.top + 'px',
+				'background-size': faWidth + 'px ' + faHeight + 'px'
+			});
+
+			// save zoom percent
+			focus.zoom = zoomPercent;
+			setFocusProperty('zoom', focus.zoom);
+
+			// update the preview if in gride mode
+			if(mode == 'grid') setGridSizeItem($thumb.parent(), gridSize, false, focus);
+
+		}; // zoomSlide
+	
+		// function called when the focus item is dragged
+		var dragEvent = function(event, ui) {
+			var $this = $(this);
+			var circleSize = $this.outerHeight();
+			var w = $this.parent().width();
+			var h = $this.parent().height();
+			var top = ui.position.top > 0 ? ui.position.top : 0;
+			var left = ui.position.left > 0 ? ui.position.left : 0;
+			top = top > 0 ? ((top / h) * 100) : 0;
+			left = left > 0 ? ((left / w) * 100) : 0;
+			var newFocus = {
+				'top': top,
+				'left': left,
+				'zoom': getFocusProperty('zoom')
+			};
+			setFocus(newFocus);
+			if(useZoomFocus) {
+				zoomSlide(newFocus.zoom);
+			} else if(mode == 'grid') {
+				setGridSizeItem($thumb.parent(), gridSize, false, newFocus);
+			}
+		}; // dragEvent
+	
+		// make draggable and attach events
+		$focusCircle.draggable({
+			containment: 'parent',
+			drag: dragEvent,
+			stop: dragEvent
+		});
+
+		if(useZoomFocus) {
+			// setup the focus zoom slider
+			var zoom = getFocusProperty('zoom');
+			$zoomSlider = $("<div />").addClass('focusZoomSlider').css({
+				'margin-top': '5px'
+			});
+
+			$zoomBox = $("<div />").addClass('focusZoomBox').css({
+				'position': 'absolute',
+				'background': 'transparent',
+				'background-image': 'url(' + $img.attr('src') + ')'
+			});
+			
+			$focusArea.prepend($zoomBox);
+			$img.after($zoomSlider);
+			$thumb.attr('src', $img.attr('src'));
+			$zoomSlider.slider({
+				min: 0,
+				max: 50,
+				value: zoom,
+				range: 'max',
+				slide: function(event, ui) {
+					zoomSlide(ui.value); 
+				}
+			});
+			zoomSlide(zoom);
+		} else {
+			$focusArea.css('background-color', 'rgba(0,0,0,0.5)'); 
+		}
+
+	}
+	
+	function stopFocus($edit) {
+		$focusCircle = $edit.find('.focusCircle');
+		if($focusCircle.length) {
+			var $focusWrap = $focusCircle.closest('.focusWrap');
+			$focusWrap.find('.focusZoomSlider').slider('destroy').remove();
+			$focusWrap.find('.focusZoomBox').remove();
+			$focusWrap.removeClass('focusWrap');
+			$focusCircle.draggable('destroy');
+			$focusCircle.parent().removeClass('focusActive');
+			$focusCircle.remove();
+			var $button = $edit.find('.InputfieldImageButtonFocus');
+			if($button.length) {
+				$icon = $button.find('i');
+				$icon.removeClass('focusIconActive').toggleClass($icon.attr('data-toggle'));
+			}
+		}
+	}
+
+	/**
+	 * Get focus zoom position for either X or Y 
+	 * 
+	 * A variation from Horst's PHP version in ImageSizerEngine, here simplified for square preview areas.
+	 *
+	 * @param focusPercent Left or Top percentage
+	 * @param sourceDimension Width or Height of source image
+	 * @param cropDimension Width or Height of cropped image
+	 * @returns {number}
+	 *
+	 */
+	function getFocusZoomPosition(focusPercent, sourceDimension, cropDimension) {
+		var focusPX = parseInt(sourceDimension * focusPercent / 100);
+		var position = parseInt(focusPX - (cropDimension / 2));
+		var maxPosition = parseInt(sourceDimension - cropDimension);
+
+		if(0 > position) position = 0;
+		if(maxPosition < position) position = maxPosition;
+
+		return position;
+	}
+
+	/**
+	 * Get focus zoom crop dimensions (a variation from Horst's PHP version in ImageSizerEngine, here simplified for square preview areas)
+	 *
+	 * @param focusLeft Left percent
+	 * @param focusTop Top percent
+	 * @param zoomPercent Zoom percent
+	 * @param faWidth Width of the thumbnail image
+	 * @param faHeight Height of the thumbnail image
+	 * @param zoomBoxSize Width and Height of the ZoomArea
+	 * @returns {{left: number, top: number, width: number, height: number}}
+	 *
+	 */
+	function getFocusZoomCropDimensions(focusLeft, focusTop, zoomPercent, faWidth, faHeight, zoomBoxSize) {
+
+		// calculate the max crop dimensions in percent
+		var percentW = zoomBoxSize / faWidth * 100; // calculate percentage of the crop width in regard of the original width
+		var percentH = zoomBoxSize / faHeight * 100; // calculate percentage of the crop height in regard of the original height
+
+		// use the smaller crop dimension
+		var maxDimension = percentW >= percentH ? faWidth : faHeight;
+
+		// calculate the zoomed dimensions
+		var cropDimension = maxDimension - (maxDimension * zoomPercent / 100); // to get the final crop Width and Height, the amount for zoom-in needs to get stripped out
+
+		// calculate the crop positions
+		var posLeft = getFocusZoomPosition(focusLeft, faWidth, cropDimension); // calculate the x-position
+		var posTop = getFocusZoomPosition(focusTop, faHeight, cropDimension); // calculate the y-position
+		// var percentLeft = posLeft / faWidth * 100;
+		// var percentTop = posTop / faHeight * 100;
+
+		return {
+			'left': posLeft,
+			'top': posTop,
+			'width': cropDimension,
+			'height': cropDimension
+		};
+	}
+
+	/**
+	 * Get focus zoom position for either X or Y, intended for use with getFocusZoomCropDimensions4GridviewSquare()
+	 * 
+	 * via Horst
+	 *
+	 * @param focusPercent Left or Top percentage
+	 * @param sourceDimPX Width or Height from the full image
+	 * @param gridViewPX Width and Height from the square GridView-Thumbnail
+	 * @param zoomPercent Zoom percent
+	 * @param scale
+	 * @param smallestSidePX the smallest Dimension from the full image
+	 * @returns {number}
+	 *
+	 */
+	function getFocusZoomPosition4GridviewSquare(focusPercent, sourceDimPX, gridViewPX, zoomPercent, scale, smallestSidePX) {
+		var sourceDimPX = sourceDimPX * scale;                 // is used to later get the position in pixel
+		var gridViewPercent = gridViewPX / sourceDimPX * 100;  // get percent of the gridViewBox in regard to the current image side size (width|height)
+		var adjustPercent = gridViewPercent / 2;               // is used to calculate position from the circle center point to [left|top] percent
+		var posPercent = focusPercent - adjustPercent;         // get adjusted position in percent
+
+		var posMinVal = 0;
+		var posMaxVal = 100 - gridViewPercent;
+		if(posPercent <= posMinVal) posPercent = 0;
+		if(posPercent >= posMaxVal) posPercent = posMaxVal;
+
+		var posPX = sourceDimPX / 100 * posPercent / scale;
+		posPX = -1 * parseInt(posPX);
+
+		//console.log(['gridView1:', 'sourceDimPX='+sourceDimPX, 'gridViewPX='+gridViewPX, 'gridViewPercent='+gridViewPercent, 'adjustPercent='+adjustPercent, 'minVal='+posMinVal, 'maxVal='+posMaxVal, 'posPercent='+posPercent, 'posPX='+posPX]);
+		return posPX;
+	}
+
+	/**
+	 * Get focus zoom clip rect for the square GridView-Thumbnails
+	 * 
+	 * via Horst
+	 *
+	 * @param focusLeft Left percent
+	 * @param focusTop Top percent
+	 * @param zoomPercent Zoom percent
+	 * @param w Width of the thumbnail image
+	 * @param h Height of the thumbnail image
+	 * @param gridViewSize Dimension of the GridView-Thumbnail
+	 * @param scale
+	 * @returns {{transformLeft: number, transformTop: number, scale: number}}
+	 *
+	 */
+	function getFocusZoomCropDimensions4GridviewSquare(focusLeft, focusTop, zoomPercent, w, h, gridViewSize, scale) {
+		var smallestSidePX = w >= h ? h : w;
+		var posLeft = getFocusZoomPosition4GridviewSquare(focusLeft, w, gridViewSize, zoomPercent, scale, smallestSidePX);
+		var posTop = getFocusZoomPosition4GridviewSquare(focusTop, h, gridViewSize, zoomPercent, scale, smallestSidePX);
+		var transformLeft = parseInt(posLeft);
+		var transformTop  = parseInt(posTop);
+		return {
+			'transformLeft': transformLeft,
+			'transformTop': transformTop,
+			'scale': scale
+		};
 	}
 
 	/**
@@ -341,6 +737,8 @@ function InputfieldImage($) {
 	 *
 	 */
 	function tearDownEdit($edit) {
+		stopFocus($edit);
+		$edit.off('click', '.InputfieldImageButtonFocus');
 		$inputArea = $edit.find(".InputfieldImageEdit__edit");
 		if($inputArea.children().not(".InputfieldFileSort").length) {
 			var $items = $inputArea.children();
@@ -495,7 +893,24 @@ function InputfieldImage($) {
 			};
 			$.magnificPopup.open(options);
 			return true;
-		});
+			
+		}).on('click', '.InputfieldImageButtonFocus', function() {
+			
+			var $button = $(this);
+			var $icon = $button.find('i');
+			var $edit = $button.closest('.InputfieldImageEdit, .gridImage'); 
+			var $focusCircle = $edit.find('.focusCircle');
+			
+			if($focusCircle.length) {
+				// stops focus
+				stopFocus($edit);
+			} else {
+				// starts focus
+				startFocus($edit);
+				$icon.addClass('focusIconActive');
+				$icon.toggleClass($icon.attr('data-toggle'));
+			}
+		}); 
 
 		$(document).on("click", function(e) {
 			var $el = $(e.target);
@@ -523,6 +938,10 @@ function InputfieldImage($) {
 				
 			} else if($el.is(".mfp-close")) {
 				// magnific popup close button
+				return;
+
+			} else if($el.is("a.remove")) {
+				// selectize 
 				return;
 				
 			} else {
@@ -636,8 +1055,14 @@ function InputfieldImage($) {
 		pct = Math.floor(pct);
 		$inputfield.find(".gridImage__overflow").each(function() {
 			var dataPct = 100 - pct; 
-			$(this).css('width', pct + '%');
-			$(this).siblings('.ImageData').css('width', dataPct + '%');
+			var $this = $(this);
+			$this.css('width', pct + '%');
+			$this.siblings('.ImageData').css('width', dataPct + '%');
+			$this.find('img').css({
+				top: 0,
+				left: 0,
+				transform: 'none',
+			});
 		});
 		setCookieData($inputfield, 'listSize', pct);
 	}
@@ -692,9 +1117,10 @@ function InputfieldImage($) {
 	 * @param $item
 	 * @param gridSize
 	 * @param ragged
+	 * @param focus optional
 	 * 
 	 */
-	function setGridSizeItem($item, gridSize, ragged) {
+	function setGridSizeItem($item, gridSize, ragged, focus) {
 		
 		if($item.hasClass('gridImage__overflow')) {
 			var $img = $item.children('img');	
@@ -710,23 +1136,100 @@ function InputfieldImage($) {
 			$item.width('auto').height('auto');
 			return;
 		}
-
+		
+		var zoom = 0;
 		var w = $img.width();
 		var h = $img.height();
-		if(!w) w = parseInt($img.attr('data-w'));
-		if(!h) h = parseInt($img.attr('data-h'));
+		var dataW = parseInt($img.attr('data-w'));
+		var dataH = parseInt($img.attr('data-h'));
+		if(!w) w = dataW;
+		if(!h) h = dataH;
+		
+		if(!ragged && typeof focus == "undefined") {
+			var focusStr = $img.attr('data-focus');
+			if(typeof focusStr == "undefined") focusStr = '50.0 50.0 0';
+			var focusArray = focusStr.split(' ');
+			focus = { 
+				top: parseFloat(focusArray[0]), 
+				left: parseFloat(focusArray[1]), 
+				zoom: parseInt(focusArray[2]) 
+			};
+		}	
+		if(!ragged) zoom = focus.zoom;
 		
 		if(ragged) {
-			$img.css('max-height', '100%').css('max-width', 'none');
+			// show full thumbnail (not square)
 			$img.attr('height', gridSize).removeAttr('width');
+			$img.css({
+				'max-height': '100%',
+				'max-width': 'none',
+				'top': '50%',
+				'left': '50%',
+				'transform': 'translate3d(-50%, -50%, 0)'
+			});
+			
+		} else if(zoom > 0 && $item.closest('.InputfieldImageFocusZoom').length && !gridSliding) { 
+			// focus with zoom
+			if(w >= h) {
+				var maxHeight = '100%';
+				var maxWidth = 'none';
+				if(w == dataW) {
+					// scale full dimensions proportionally to gridSize
+					h = gridSize;	
+					w = (h / dataH) * dataW
+				}
+			} else {
+				var maxHeight = 'none';
+				var maxWidth = '100%';
+				if(h == dataH) {
+					// scale full dimensions proportionally to gridSize
+					w = gridSize;
+					h = (w / dataW) * dataH;
+				}
+			}
+		
+			var scale = 1 + ((zoom / 100) * 2);
+			var crop = getFocusZoomCropDimensions4GridviewSquare(focus.left, focus.top, zoom, w, h, gridSize, scale);
+			$img.css({
+				'left': '0px',
+				'top': '0px',
+				'transform-origin': '0px 0px',
+				'transform': 'scale(' + crop.scale + ') translate3d(' + crop.transformLeft + 'px, ' + crop.transformTop + 'px, 0)',
+				'max-width': maxWidth,
+				'max-height': maxHeight
+			});
+
 		} else if(w >= h) {
-			$img.css('max-height', '100%').css('max-width', 'none');
+			// image width greater than height
 			$img.attr('height', gridSize).removeAttr('width');
+			if(focus.left < 1) focus.left = 0.001;
+			$img.css({
+				'max-height': '100%',
+				'max-width': 'none',
+				'top': '50%',
+				'left': focus.left + '%',
+				'transform': 'translate3d(-' + focus.left + '%, -50%, 0)'
+			});
 		} else if(h > w) {
-			$img.css('max-height', 'none').css('max-width', '100%');
+			// image height greater tahn width
 			$img.attr('width', gridSize).removeAttr('height');
+			if(focus.top < 1) focus.top = 0.001;
+			$img.css({
+				'max-height': 'none',
+				'max-width': '100%',
+				'top': focus.top + '%',
+				'left': '50%',
+				'transform': 'translate3d(-50%, -' + focus.top + '%, 0)'
+			});
 		} else {
-			$img.css('max-height', '100%').css('max-width', 'none');
+			// perfectly square image
+			$img.css({
+				'max-height': '100%',
+				'max-width': 'none',
+				'top': '50%',
+				'left': '50%',
+				'transform': 'translate3d(-50%, -50%, 0)'
+			});
 			$img.removeAttr('width').attr('height', gridSize);
 		}
 
@@ -782,9 +1285,12 @@ function InputfieldImage($) {
 			var $inputfield = $a.closest('.Inputfield');
 			var href = $a.attr('href');
 			var size;
+			var $aPrev = $a.parent().children('.' + activeClass);
+			var hrefPrev = $aPrev.attr('href');
 			
-			$a.parent().children('.' + activeClass).removeClass(activeClass);
+			$aPrev.removeClass(activeClass);
 			$a.addClass(activeClass);
+			stopFocus($inputfield);
 			
 			if(href == 'list') {
 				if(!$inputfield.hasClass('InputfieldImageEditAll')) {
@@ -805,6 +1311,10 @@ function InputfieldImage($) {
 				size = getCookieData($inputfield, 'size');
 				setGridSize($inputfield, size, false);
 				setCookieData($inputfield, 'mode', 'grid');
+				if(hrefPrev == 'left') setTimeout(function() {
+					// because width/height aren't immediately available for img, so run again in this case
+					setGridSize($inputfield, size, false);
+				}, 100);
 			}
 
 			//hrefPrev = href; //hrefPrev == href && href != 'left' && href != 'list' ? '' : href;
@@ -858,33 +1368,37 @@ function InputfieldImage($) {
 	
 		$header.append($slider);
 		
+		var sizeSlide = function(event, ui) {
+			var value = ui.value;
+			var minPct = 15;
+			var divisor = Math.floor(gridSize / minPct);
+			var v = value - min;
+			var listSize = Math.floor(minPct + (v / divisor));
+
+			if($inputfield.hasClass('InputfieldImageEditAll')) {
+				setCookieData($inputfield, 'size', value);
+				setListSize($inputfield, listSize);
+			} else {
+				setCookieData($inputfield, 'listSize', listSize);
+				setGridSize($inputfield, value);
+			}
+		};
+		
 		$slider.slider({
 			'min': min,
 			'max': max, 
 			'value': getCookieData($inputfield, 'size'),
 			'range': 'min',
-			'slide': function(event, ui) {
-				
-				var value = ui.value;
-				var minPct = 15;
-				var divisor = Math.floor(gridSize / minPct);
-				var v = value - min;
-				var listSize = Math.floor(minPct + (v / divisor));
-				
-				if($inputfield.hasClass('InputfieldImageEditAll')) {
-					setCookieData($inputfield, 'size', value);
-					setListSize($inputfield, listSize);
-				} else {
-					setCookieData($inputfield, 'listSize', listSize);
-					setGridSize($inputfield, value);
-				}
-			},
+			'slide': sizeSlide,
 			'start': function(event, ui) {
+				gridSliding = true;
 				if($inputfield.find(".InputfieldImageEdit:visible").length) {
 					$inputfield.find(".InputfieldImageEdit__close").click();
 				}
 			}, 
 			'stop': function(event, ui) {
+				gridSliding = false;
+				sizeSlide(event, ui); 
 				updateGrid($inputfield);
 			}
 		});
@@ -905,7 +1419,10 @@ function InputfieldImage($) {
 		if(!name.length || typeof value == "undefined") return;
 		if(data[name][property] == value) return; // if already set with same value, exit now
 		data[name][property] = value; 
-		$.cookie('InputfieldImage', data);
+		// $.cookie('InputfieldImage', data);
+		$.cookie('InputfieldImage', data, {
+			secure: (window.location.protocol.indexOf("https:") === 0)
+		});
 		cookieData = data;
 		//console.log('setCookieData(' + property + ', ' + value + ')');
 	}
@@ -977,11 +1494,12 @@ function InputfieldImage($) {
 		
 		//console.log('initInputfield');
 		//console.log($inputfield);
-		setGridSize($inputfield, size, ragged);
 		
 		if($inputfield.hasClass('InputfieldImageEditAll') || mode == 'list') {
 			var listSize = getCookieData($inputfield, 'listSize');
 			setListSize($inputfield, listSize);
+		} else {
+			setGridSize($inputfield, size, ragged);
 		}
 	
 		if(!$inputfield.hasClass('InputfieldImageInit')) {
@@ -1003,6 +1521,15 @@ function InputfieldImage($) {
 		}
 		
 		checkInputfieldWidth($inputfield);
+	
+		$inputfield.on('change', '.InputfieldFileActionSelect', function() {
+			var $note = $(this).next('.InputfieldFileActionNote');
+			if($(this).val().length) {
+				$note.fadeIn();
+			} else {
+				$note.hide();
+			}
+		}); 
 	}
 
 	/*** UPLOAD **********************************************************************************/
@@ -1107,12 +1634,18 @@ function InputfieldImage($) {
 			var gridSize = $fileList.data("gridsize");
 			var doneTimer = null; // for AjaxUploadDone event
 			var maxFiles = parseInt($this.find('.InputfieldImageMaxFiles').val());
+			var resizeSettings = getClientResizeSettings($inputfield);
+			var useClientResize = resizeSettings.maxWidth > 0 || resizeSettings.maxHeight > 0 || resizeSettings.maxSize > 0;
 
 			setupDropzone($this);
 			if(maxFiles != 1) setupDropInPlace($fileList);
 			//setupDropHere();
 
 			$fileList.children().addClass('InputfieldFileItemExisting'); // identify items that are already there
+		
+			$inputfield.on('pwimageupload', function(event, data) {
+				traverseFiles([ data.file ], data.xhr); 
+			}); 
 
 			/**
 			 * Setup the .AjaxUploadDropHere 
@@ -1189,7 +1722,8 @@ function InputfieldImage($) {
 					dragStop();
 				}, false);
 				
-				el.addEventListener("dragenter", function() {
+				el.addEventListener("dragenter", function(evt) {
+					evt.preventDefault();
 					dragStart();
 				}, false);
 
@@ -1334,9 +1868,11 @@ function InputfieldImage($) {
 			 * Upload file
 			 * 
 			 * @param file
+			 * @param extension (optional)
+			 * @param xhrsub (optional replacement for xhr)
 			 * 
 			 */
-			function uploadFile(file) {
+			function uploadFile(file, extension, xhrsub) {
 			
 				var labels = ProcessWire.config.InputfieldImage.labels;
 				var filesizeStr = parseInt(file.size / 1024, 10) + '&nbsp;kB';
@@ -1417,21 +1953,29 @@ function InputfieldImage($) {
 				img.src = fileUrl;
 
 				// Uploading - for Firefox, Google Chrome and Safari
-				xhr = new XMLHttpRequest();
+				if(typeof xhrsub != "undefined") {
+					xhr = xhrsub;
+				} else {
+					xhr = new XMLHttpRequest();
+				}
 
 				// Update progress bar
-				xhr.upload.addEventListener("progress", function(evt) {
-					if(!evt.lengthComputable) return;
+				function updateProgress(evt) {
+					if(typeof evt != "undefined") {
+						if(!evt.lengthComputable) return;
+						$progressBar.attr("value", parseInt((evt.loaded / evt.total) * 100));
+					}
 					$('body').addClass('pw-uploading');
-					$progressBar.attr("value", parseInt((evt.loaded / evt.total) * 100));
 					$spinner.css('display', 'block');
-				}, false);
+				}
+				xhr.upload.addEventListener("progress", updateProgress, false);
 
 				// File uploaded: called for each file
 				xhr.addEventListener("load", function() {
 					xhr.getAllResponseHeaders();
-					var response = $.parseJSON(xhr.responseText),
-						wasZipFile = response.length > 1;
+					var response = $.parseJSON(xhr.responseText);
+					if(typeof response.ajaxResponse != "undefined") response = response.ajaxResponse; // ckeupload
+					var	wasZipFile = response.length > 1;
 					if(response.error !== undefined) response = [response];
 					// response = [{error: "Invalid"}];
 
@@ -1501,9 +2045,24 @@ function InputfieldImage($) {
 						if($progressItem.length) $progressItem.remove();
 						
 						if(uploadReplace.item && maxFiles != 1) {
+							// indicate replacement for processing
+							$markup.find(".InputfieldFileReplace").val(uploadReplace.file);
+							// update replaced file name (visually) if extensions are the same
+							var $imageEditName = $markup.find(".InputfieldImageEdit__name");
+							var uploadNewName = $imageEditName.text();
+							var uploadNewExt = uploadNewName.substring(uploadNewName.lastIndexOf('.')+1).toLowerCase();
+							uploadNewName = uploadNewName.substring(0, uploadNewName.lastIndexOf('.')); // remove ext
+							var uploadReplaceName = uploadReplace.file;
+							if(uploadReplaceName.indexOf('?') > -1) {
+								uploadReplaceName = uploadReplaceName.substring(0, uploadReplaceName.indexOf('?'));
+							}
+							var uploadReplaceExt = uploadReplaceName.substring(uploadReplaceName.lastIndexOf('.')+1).toLowerCase();
+							uploadReplaceName = uploadReplaceName.substring(0, uploadReplaceName.lastIndexOf('.')); // remove ext
+							if(uploadReplaceExt == uploadNewExt) {
+								$imageEditName.children('span').text(uploadReplaceName).removeAttr('contenteditable');
+							}
 							// re-open replaced item
 							$markup.find(".gridImage__edit").click();
-							$markup.find(".InputfieldFileReplace").val(uploadReplace.file);
 						}
 				
 						// reset uploadReplace data
@@ -1535,32 +2094,57 @@ function InputfieldImage($) {
 				} else if($inputfield.find(".InputfieldImageEdit:visible").length) {
 					$inputfield.find(".InputfieldImageEdit__close").click();
 				}
-
-				// Here we go
-				xhr.open("POST", postUrl, true);
-				xhr.setRequestHeader("X-FILENAME", encodeURIComponent(file.name));
-				xhr.setRequestHeader("X-FIELDNAME", fieldName);
-				xhr.setRequestHeader("Content-Type", "application/octet-stream"); // fix issue 96-Pete
-				xhr.setRequestHeader("X-" + postTokenName, postTokenValue);
-				xhr.setRequestHeader("X-REQUESTED-WITH", 'XMLHttpRequest');
-				xhr.send(file);
-
+				
 				// Present file info and append it to the list of files
 				if(uploadReplace.item) {
 					uploadReplace.item.replaceWith($progressItem);
 					uploadReplace.item = $progressItem;
 				} else if($uploadBeforeItem && $uploadBeforeItem.length) {
-					$uploadBeforeItem.before($progressItem); 
+					$uploadBeforeItem.before($progressItem);
 				} else {
 					$fileList.append($progressItem);
 				}
-				updateGrid();
-				$inputfield.trigger('change');
-				var numFiles = $inputfield.find('.InputfieldFileItem').length;
-				if(numFiles == 1) {
-					$inputfield.removeClass('InputfieldFileEmpty').removeClass('InputfieldFileMultiple').addClass('InputfieldFileSingle');
-				} else if(numFiles > 1) {
-					$inputfield.removeClass('InputfieldFileEmpty').removeClass('InputfieldFileSingle').addClass('InputfieldFileMultiple');
+
+				// Here we go
+				function sendUpload(file, imageData) {
+					if(typeof xhrsub == "undefined") {
+						xhr.open("POST", postUrl, true);
+					}
+					xhr.setRequestHeader("X-FILENAME", encodeURIComponent(file.name));
+					xhr.setRequestHeader("X-FIELDNAME", fieldName);
+					if(uploadReplace.item) xhr.setRequestHeader("X-REPLACENAME", uploadReplace.file); 
+					xhr.setRequestHeader("Content-Type", "application/octet-stream"); // fix issue 96-Pete
+					xhr.setRequestHeader("X-" + postTokenName, postTokenValue);
+					xhr.setRequestHeader("X-REQUESTED-WITH", 'XMLHttpRequest');
+					if(typeof imageData != "undefined" && imageData != false) {
+						xhr.send(imageData); 
+					} else {
+						xhr.send(file);
+					}
+					
+					updateGrid();
+					$inputfield.trigger('change');
+					var numFiles = $inputfield.find('.InputfieldFileItem').length;
+					if(numFiles == 1) {
+						$inputfield.removeClass('InputfieldFileEmpty').removeClass('InputfieldFileMultiple').addClass('InputfieldFileSingle');
+					} else if(numFiles > 1) {
+						$inputfield.removeClass('InputfieldFileEmpty').removeClass('InputfieldFileSingle').addClass('InputfieldFileMultiple');
+					}
+				}
+				
+				updateProgress();
+			
+				var ext = file.name.substring(file.name.lastIndexOf('.')+1).toLowerCase();
+				if(useClientResize && (ext == 'jpg' || ext == 'jpeg' || ext == 'png' || ext == 'gif')) {
+					var resizer = new PWImageResizer(resizeSettings);
+					$spinner.addClass('pw-resizing');
+					resizer.resize(file, function(imageData) {
+						$spinner.removeClass('pw-resizing');
+						// resize completed, start upload
+						sendUpload(file, imageData);
+					});
+				} else {
+					sendUpload(file);
 				}
 			}
 
@@ -1570,12 +2154,12 @@ function InputfieldImage($) {
 			 * @param files
 			 * 
 			 */
-			function traverseFiles(files) {
+			function traverseFiles(files, xhr) {
 
 				var toKilobyte = function(i) {
 					return parseInt(i / 1024, 10);
 				};
-
+				
 				if(typeof files === "undefined") {
 					fileList.innerHTML = "No support for the File API in this web browser";
 					return;
@@ -1590,7 +2174,7 @@ function InputfieldImage($) {
 						message = extension + ' is a invalid file extension, please use one of:  ' + extensions;
 						$errorParent.append(errorItem(message, files[i].name));
 
-					} else if(files[i].size > maxFilesize && maxFilesize > 2000000) {
+					} else if(!useClientResize && files[i].size > maxFilesize && maxFilesize > 2000000) {
 						// I do this test only if maxFilesize is at least 2M (php default). 
 						// There might (not sure though) be some issues to get that value so don't want to overvalidate here -apeisa
 						var filesizeKB = toKilobyte(files[i].size),
@@ -1598,9 +2182,12 @@ function InputfieldImage($) {
 
 						message = 'Filesize ' + filesizeKB + ' kb is too big. Maximum allowed is ' + maxFilesizeKB + ' kb';
 						$errorParent.append(errorItem(message, files[i].name));
+						
+					} else if(typeof xhr != "undefined") {
+						uploadFile(files[i], extension, xhr);
 
 					} else {
-						uploadFile(files[i]);
+						uploadFile(files[i], extension);
 					}
 					
 					if(maxFiles == 1) break;
@@ -1615,6 +2202,7 @@ function InputfieldImage($) {
 			}, false);
 			
 		}
+		
 
 		/**
 		 * Setup dropzone within an .InputfieldImageEdit panel so one can drag/drop new photo into existing image enlargement
@@ -1647,6 +2235,30 @@ function InputfieldImage($) {
 		setupEnlargementDropzones();
 		
 	} // initUploadHTML5
+	
+	function getClientResizeSettings($inputfield) {
+		
+		var settings = {
+			maxWidth: 0,
+			maxHeight: 0,
+			maxSize: 0, 
+			quality: 1.0,
+			autoRotate: true,
+			debug: ProcessWire.config.debug
+		};
+	
+		var data = $inputfield.attr('data-resize');
+
+		if(typeof data != "undefined" && data.length) {
+			data = data.split(';');
+			settings.maxWidth = data[0].length ? parseInt(data[0]) : 0;
+			settings.maxHeight = data[1].length ? parseInt(data[1]) : 0;
+			settings.maxSize = data[2].length ? parseFloat(data[2]) : 0;
+			settings.quality = parseFloat(data[3]);
+		}
+		
+		return settings;
+	}
 	
 	/**
 	 * Initialize InputfieldImage

@@ -45,15 +45,29 @@
  * @property mixed $value HTML 'value' attribute for the Inputfield. #pw-group-attribute-properties
  * @property string $class HTML 'class' attribute for the Inputfield. #pw-group-attribute-properties
  * 
+ * @method string|Inputfield name($name = null) Get or set the name attribute. @since 3.0.110 #pw-group-attribute-methods
+ * @method string|Inputfield id($id = null) Get or set the id attribute. @since 3.0.110 #pw-group-attribute-methods
+ * @method string|Inputfield class($class = null) Get class attribute or add a class to the class attribute. @since 3.0.110 #pw-group-attribute-methods
+ * 
  * LABELS & CONTENT
  * ================
  * @property string $label Primary label text that appears above the input. #pw-group-labels
  * @property string $description Optional description that appears under label to provide more detailed information. #pw-group-labels
  * @property string $notes Optional notes that appear under input area to provide additional notes. #pw-group-labels
  * @property string $icon Optional font-awesome icon name to accompany label (excluding the "fa-") part). #pw-group-labels
+ * @property string $requiredLabel Optional custom label to display when missing required value. @since 3.0.98 #pw-group-labels 
  * @property string $head Optional text that appears below label but above description (only used by some Inputfields). #pw-internal
  * @property string|null $prependMarkup Optional markup to prepend to the Inputfield content container. #pw-group-other
  * @property string|null $appendMarkup Optional markup to append to the Inputfield content container. #pw-group-other
+ * 
+ * @method string|Inputfield label($label = null) Get or set the 'label' property via method. @since 3.0.110 #pw-group-labels
+ * @method string|Inputfield description($description = null) Get or set the 'description' property via method. @since 3.0.110  #pw-group-labels
+ * @method string|Inputfield notes($notes = null) Get or set the 'notes' property via method. @since 3.0.110 #pw-group-labels
+ * @method string|Inputfield icon($icon = null) Get or set the 'icon' property via method. @since 3.0.110 #pw-group-labels
+ * @method string|Inputfield requiredLabel($requiredLabel = null) Get or set the 'requiredLabel' property via method. @since 3.0.110 #pw-group-labels
+ * @method string|Inputfield head($head = null) Get or set the 'head' property via method. @since 3.0.110 #pw-group-labels
+ * @method string|Inputfield prependMarkup($markup = null) Get or set the 'prependMarkup' property via method. @since 3.0.110 #pw-group-labels
+ * @method string|Inputfield appendMarkup($markup = null) Get or set the 'appendMarkup' property via method. @since 3.0.110 #pw-group-labels
  * 
  * APPEARANCE
  * ==========
@@ -62,13 +76,20 @@
  * @property int $columnWidth Width of column for this Inputfield 10-100 percent. 0 is assumed to be 100 (default). #pw-group-appearance
  * @property int $skipLabel Skip display of the label? See the "skipLabel" constants for options. #pw-group-appearance
  * 
+ * @method int|Inputfield collapsed($collapsed = null) Get or set collapsed property via method. @since 3.0.110 #pw-group-appearance
+ * @method string|Inputfield showIf($showIf = null) Get or set showIf selector property via method. @since 3.0.110 #pw-group-appearance
+ * @method int|Inputfield columnWidth($columnWidth = null) Get or set columnWidth property via method. @since 3.0.110 #pw-group-appearance
+ * @method int|Inputfield skipLabel($skipLabel = null) Get or set the skipLabel constant property via method. @since 3.0.110 #pw-group-appearance
+ * 
+ * 
  * SETTINGS & BEHAVIOR
  * ===================
  * @property int|bool $required Set to true (or 1) to make input required, or false (or 0) to make not required (default=0). #pw-group-behavior
  * @property string $requiredIf Optional conditions under which input is required (selector string). #pw-group-behavior
  * @property InputfieldWrapper|null $parent The parent InputfieldWrapper for this Inputfield or null if not set. #pw-internal
  * @property null|bool|Fieldtype $hasFieldtype The Fieldtype using this Inputfield, or boolean false when known not to have a Fieldtype, or null when not known. #pw-group-other
- * @property null|Field $hasField The Field object associated with this Inputfield, or or null when not applicable or not known. #pw-group-other
+ * @property null|Field $hasField The Field object associated with this Inputfield, or null when not applicable or not known. #pw-group-other
+ * @property null|Page $hasPage The Page object associated with this Inputfield, or null when not applicable or not known. #pw-group-other
  * @property bool|null $useLanguages When multi-language support active, can be set to true to make it provide inputs for each language, where supported (default=false). #pw-group-behavior
  * @property null|bool|int $entityEncodeLabel Set to boolean false to specifically disable entity encoding of field header/label (default=true). #pw-group-output
  * @property null|bool $entityEncodeText Set to boolean false to specifically disable entity encoding for other text: description, notes, etc. (default=true). #pw-group-output
@@ -76,6 +97,14 @@
  * @property string $wrapClass Optional class name (CSS) to apply to the HTML element wrapping the Inputfield. #pw-group-other
  * @property string $headerClass Optional class name (CSS) to apply to the InputfieldHeader element #pw-group-other
  * @property string $contentClass Optional class name (CSS) to apply to the InputfieldContent element #pw-group-other
+ * 
+ * @method string|Inputfield required($required = null) Get or set required state. @since 3.0.110 #pw-group-behavior
+ * @method string|Inputfield requiredIf($requiredIf = null) Get or set required-if selector. @since 3.0.110 #pw-group-behavior
+ *
+ * @method string|Inputfield wrapClass($class = null) Get wrapper class attribute or add a class to it. @since 3.0.110 #pw-group-other
+ * @method string|Inputfield headerClass($class = null) Get header class attribute or add a class to it. @since 3.0.110 #pw-group-other
+ * @method string|Inputfield contentClass($class = null) Get content class attribute or add a class to it. @since 3.0.110 #pw-group-other
+ * 
  *
  * HOOKABLE METHODS
  * ================
@@ -260,7 +289,7 @@ abstract class Inputfield extends WireData implements Module {
 	 */
 
 	/**
-	 * Attributes specified for the XHTML output, like class, rows, cols, etc. 
+	 * Attributes specified for the HTML output, like class, rows, cols, etc. 
 	 *
 	 */
 	protected $attributes = array();
@@ -303,7 +332,7 @@ abstract class Inputfield extends WireData implements Module {
 
 		self::$numInstances++; 
 
-		$this->set('label', ''); 	// primary clikable label
+		$this->set('label', ''); 	// primary clickable label
 		$this->set('description', ''); 	// descriptive copy, below label
 		$this->set('icon', ''); // optional icon name to accompany label
 		$this->set('notes', ''); 	// highlighted descriptive copy, below output of input field
@@ -319,6 +348,8 @@ abstract class Inputfield extends WireData implements Module {
 		$this->set('contentClass', ''); // optional class to apply to InputfieldContent wrapper
 		$this->set('textFormat', self::textFormatBasic); // format applied to description and notes
 		$this->set('renderValueFlags', 0); // see renderValue* constants, applicable to renderValue mode only
+		$this->set('prependMarkup', '');
+		$this->set('appendMarkup', '');
 
 		// default ID attribute if no 'id' attribute set
 		$this->defaultID = $this->className() . self::$numInstances; 
@@ -466,6 +497,18 @@ abstract class Inputfield extends WireData implements Module {
 	}
 
 	/**
+	 * Unset any previously set parent
+	 * 
+	 * #pw-internal
+	 * @return $this
+	 * 
+	 */
+	public function unsetParent() {
+		$this->parent = null;
+		return $this;
+	}
+
+	/**
 	 * Get this Inputfield’s parent InputfieldWrapper, or NULL if it doesn’t have one.
 	 * 
 	 * #pw-group-traversal
@@ -493,6 +536,80 @@ abstract class Inputfield extends WireData implements Module {
 		$parents = array($parent);
 		foreach($parent->getParents() as $p) $parents[] = $p;
 		return $parents; 
+	}
+
+	/**
+	 * Get or set parent of Inputfield 
+	 * 
+	 * This convenience method performs the same thing as getParent() and setParent().
+	 * 
+	 * To get parent, specify no arguments. It will return null if no parent assigned, or an 
+	 * InputfieldWrapper instance of the parent. 
+	 * 
+	 * To set parent, specify an InputfieldWrapper for the $parent argument. The return value
+	 * is the current Inputfield for fluent interface.
+	 * 
+	 * #pw-group-traversal
+	 * 
+	 * @param null|InputfieldWrapper $parent
+	 * @return null|Inputfield|InputfieldWrapper
+	 * @since 3.0.110
+	 * 
+	 */
+	public function parent($parent = null) {
+		if($parent === null) {
+			return $this->getParent();
+		} else {
+			return $this->setParent($parent);
+		}
+	}
+
+	/**
+	 * Get array of all parents of this Inputfield
+	 * 
+	 * This is identical to and an alias of the getParents() method.
+	 * 
+	 * #pw-group-traversal
+	 * 
+	 * @return array
+	 * @since 3.0.110
+	 * 
+	 */
+	public function parents() {
+		return $this->getParents();
+	}
+
+	/**
+	 * Get the root parent InputfieldWrapper element (farthest parent, commonly InputfieldForm)
+	 * 
+	 * This returns null only if Inputfield it is called from has not yet been added to an InputfieldWrapper.
+	 * 
+	 * #pw-group-traversal
+	 *
+	 * @return InputfieldForm|InputfieldWrapper|null
+	 * @since 3.0.106
+	 * 
+	 */
+	public function getRootParent() {
+		$parents = $this->getParents();
+		return count($parents) ? end($parents) : null;
+	}
+
+	/**
+	 * Get the InputfieldForm element that contains this field or null if not yet defined
+	 * 
+	 * This is the same as the `getRootParent()` method except that it returns null if root parent 
+	 * is not an InputfieldForm. 
+	 * 
+	 * #pw-group-traversal
+	 * 
+	 * @return InputfieldForm|null
+	 * @since 3.0.106
+	 * 
+	 */
+	public function getForm() {
+		$form = $this instanceof InputfieldForm ? $this : $this->getRootParent();
+		return ($form instanceof InputfieldForm ? $form : null);
 	}
 
 	/**
@@ -678,6 +795,39 @@ abstract class Inputfield extends WireData implements Module {
 	public function val($value = null) {
 		if($value === null) return $this->getAttribute('value');
 		return $this->setAttribute('value', $value);
+	}
+	
+	/**
+	 * If method call resulted in no handler, this hookable method is called.
+	 * 
+	 * We use this to allow for attributes and properties to be set via method, useful primarily
+	 * for fluent interface calls. 
+	 *
+	 * #pw-internal
+	 *
+	 * @param string $method Requested method name
+	 * @param array $arguments Arguments provided
+	 * @return null|mixed Return value of method (if applicable)
+	 * @throws WireException
+	 * @since 3.0.110
+	 *
+	 */
+	protected function ___callUnknown($method, $arguments) {
+		$arg = isset($arguments[0]) ? $arguments[0] : null;
+		if(isset($this->attributes[$method])) {
+			// get or set an attribute
+			return $arg === null ? $this->getAttribute($method) : $this->setAttribute($method, $arg);
+		} else if(($value = $this->getSetting($method)) !== null) {
+			// get or set a setting
+			if($arg === null) return $value;
+			if(stripos($method, 'class') !== false) { 
+				// i.e. class, wrapClass, contentClass, etc.
+				return $this->addClass($arg, $method);
+			} else {
+				return $this->set($method, $arg);
+			}
+		}
+		return parent::___callUnknown($method, $arguments);
 	}
 	
 	/**
@@ -1068,7 +1218,7 @@ abstract class Inputfield extends WireData implements Module {
 	 * @param bool $renderValueMode
 	 * 
 	 */
-	public function ___renderReadyHook(Inputfield $parent = null, $renderValueMode) { }
+	public function ___renderReadyHook(Inputfield $parent = null, $renderValueMode = false) { }
 
 	/**
 	 * This hook was replaced by renderReady
@@ -1456,7 +1606,9 @@ abstract class Inputfield extends WireData implements Module {
 			$errors[] = $text; 
 			$this->wire('session')->set($key, $errors); 
 		}
-		$text .= $this->name ? " ($this->name)" : "";
+		$label = $this->getSetting('label');
+		if(empty($label)) $label= $this->attr('name');
+		if(strlen($label)) $text .= " - $label"; 
 		return parent::error($text, $flags); 
 	}
 
@@ -1567,9 +1719,12 @@ abstract class Inputfield extends WireData implements Module {
 	 */
 	public function entityEncode($str, $markdown = false) {
 		
+		/** @var Sanitizer $sanitizer */
+		$sanitizer = $this->wire('sanitizer');
+		
 		// if already encoded, then un-encode it
 		if(strpos($str, '&') !== false && preg_match('/&(#\d+|[a-zA-Z]+);/', $str)) {
-			$str = html_entity_decode($str, ENT_QUOTES, "UTF-8");
+			$str = $sanitizer->unentities($str);
 		}
 		
 		if($markdown && $markdown !== self::textFormatNone) {
@@ -1581,17 +1736,17 @@ abstract class Inputfield extends WireData implements Module {
 			if(!$textFormat) $textFormat = self::textFormatBasic;
 			if($textFormat & self::textFormatBasic) {
 				// only basic markdown allowed (default behavior)
-				$str = $this->wire('sanitizer')->entitiesMarkdown($str, array('allowBrackets' => true));
+				$str = $sanitizer->entitiesMarkdown($str, array('allowBrackets' => true));
 			} else if($textFormat & self::textFormatMarkdown) {
 				// full markdown, plus HTML is also allowed
-				$str = $this->wire('sanitizer')->entitiesMarkdown($str, array('fullMarkdown' => true));
+				$str = $sanitizer->entitiesMarkdown($str, array('fullMarkdown' => true));
 			} else {
 				// nothing allowed, text fully entity encoded regardless of $markdown request
-				$str = $this->wire('sanitizer')->entities($str);
+				$str = $sanitizer->entities($str);
 			}
 			
 		} else {
-			$str = $this->wire('sanitizer')->entities($str);
+			$str = $sanitizer->entities($str);
 		}
 		
 		return $str;

@@ -38,7 +38,7 @@
  * Typically a Pagefiles object will be associated with a specific field attached to a Page. 
  * There may be multiple instances of Pagefiles attached to a given Page (depending on what fields are in it's fieldgroup).
  * 
- * ProcessWire 3.x, Copyright 2016 by Ryan Cramer
+ * ProcessWire 3.x, Copyright 2018 by Ryan Cramer
  * https://processwire.com
  *
  *
@@ -47,6 +47,7 @@
  * @property Page $page Returns the Page that contains this set of files, same as the getPage() method. #pw-group-other
  * @property Field $field Returns the Field that contains this set of files, same as the getField() method. #pw-group-other
  * @method Pagefiles delete() delete(Pagefile $file) Removes the file and deletes from disk when page is saved. #pw-group-manipulation
+ * @method Pagefile|bool clone(Pagefile $item, array $options = array()) Duplicate a file and return it. #pw-group-manipulation
  *
  */
 
@@ -75,6 +76,22 @@ class Pagefiles extends WireArray implements PageFieldValueInterface {
 	 *
 	 */
 	protected $unlinkQueue = array();
+	
+	/**
+	 * Items to be renamed when Page is saved (oldName => newName)
+	 *
+	 * @var array
+	 *
+	 */
+	protected $renameQueue = array();
+
+	/**
+	 * Items to be made non-temp upon page save (like duplicated files)
+	 *
+	 * @var array
+	 *
+	 */
+	protected $unTempQueue = array();
 
 	/**
 	 * IDs of any hooks added in this instance, used by the destructor
@@ -320,6 +337,18 @@ class Pagefiles extends WireArray implements PageFieldValueInterface {
 		if(is_string($item)) {
 			/** @var Pagefile $item */
 			$item = $this->wire(new Pagefile($this, $item)); 
+			
+		} else if($item instanceof Pagefile) {
+			$page = $this->get('page');	
+			if($page && "$page" !== "$item->page") {
+				$newItem = clone $item;
+				$newItem->setPagefilesParent($this);
+				$newItem->install($item->filename);
+				$newItem->isTemp(true);
+				$this->unTempQueue($newItem);
+				$this->message("Copied $item->url to $newItem->url", Notice::debug); 
+				$item = $newItem;
+			}
 		}
 
 		/** @var Pagefiles $result */
@@ -334,13 +363,35 @@ class Pagefiles extends WireArray implements PageFieldValueInterface {
 	 *
 	 */
 	public function hookPageSave() {
+		
 		if($this->page && $this->field && !$this->page->isChanged($this->field->name)) return $this;
+		
+		foreach($this->unTempQueue as $item) {
+			$item->isTemp(false);
+		}
+
 		foreach($this->unlinkQueue as $item) {
 			$item->unlink();
 		}
+		
+		foreach($this->renameQueue as $item) {
+			$name = $item->get('_rename'); 
+			if(!$name) continue;
+			$item->rename($name); 
+		}
+
+		$this->unTempQueue = array();
 		$this->unlinkQueue = array();
+		$this->renameQueue = array();
 		$this->removeHooks();
+		
 		return $this; 
+	}
+	
+	protected function addSaveHook() {
+		if(!count($this->unlinkQueue) && !count($this->renameQueue) && !count($this->unTempQueue)) {
+			$this->hookIDs[] = $this->page->filesManager->addHookBefore('save', $this, 'hookPageSave');
+		}
 	}
 
 	/**
@@ -375,9 +426,7 @@ class Pagefiles extends WireArray implements PageFieldValueInterface {
 	public function remove($item) {
 		if(is_string($item)) $item = $this->get($item); 
 		if(!$this->isValidItem($item)) throw new WireException("Invalid type to {$this->className}::remove(item)"); 
-		if(!count($this->unlinkQueue)) {
-			$this->hookIDs[] = $this->page->filesManager->addHookBefore('save', $this, 'hookPageSave'); 
-		}
+		$this->addSaveHook();
 		$this->unlinkQueue[] = $item; 
 		parent::remove($item); 
 		return $this; 
@@ -399,6 +448,87 @@ class Pagefiles extends WireArray implements PageFieldValueInterface {
 		}
 
 		return $this; 
+	}
+
+	/**
+	 * Queue a rename of a Pagefile
+	 * 
+	 * This only queues a rename. Rename actually occurs when page is saved. 
+	 * Note this differs from the behavior of `Pagefile::rename()`. 
+	 * 
+	 * #pw-group-manipulation
+	 * 
+	 * @param Pagefile $item
+	 * @param string $name
+	 * @return Pagefiles 
+	 * @see Pagefile::rename()
+	 * 
+	 */
+	public function rename(Pagefile $item, $name) {
+		$item->set('_rename', $name); 
+		$this->renameQueue[] = $item; 
+		$this->trackChange('renameQueue', $item->name, $name);
+		$this->addSaveHook();
+		return $this;
+	}
+
+	/**
+	 * Duplicate the Pagefile and add to this Pagefiles instance
+	 * 
+	 * After duplicating a file, you must follow up with a save of the page containing it.
+	 * Otherwise the file is marked for deletion. 
+	 * 
+	 * @param Pagefile $item Pagefile item to duplicate
+	 * @param array $options Options to modify default behavior:
+	 *  - `action` (string): Specify "append", "prepend", "after", "before" or blank to only return Pagefile. (default="after")
+	 *  - `pagefiles` (Pagefiles): Pagefiles instance file should be duplicated to. (default=$this)
+	 * @return Pagefile|bool Returns new Pagefile or boolean false on fail
+	 * 
+	 */
+	public function ___clone(Pagefile $item, array $options = array()) {
+		
+		$defaults = array(
+			'action' => 'after', 
+			'pagefiles' => $this, 
+		);
+	
+		$options = array_merge($defaults, $options);
+		/** @var Pagefiles $pagefiles */
+		$pagefiles = $options['pagefiles'];
+		$itemCopy = false;
+		$path = $pagefiles->path();		
+		$parts = explode('.', $item->basename(), 2); 
+		$n = $path === $this->path() ? 1 : 0;
+		
+		if($n && preg_match('/^(.+?)-(\d+)$/', $parts[0], $matches)) {
+			$parts[0] = $matches[1];
+			$n = (int) $matches[2];
+			if(!$n) $n = 1;
+		}
+		
+		do {
+			$pathname = $n ? ($path . $parts[0] . "-$n." . $parts[1]) : ($path . $item->basename);
+		} while(file_exists($pathname) && $n++);
+		
+		if(copy($item->filename(), $pathname)) {
+			$this->wire('files')->chmod($pathname);
+			
+			$itemCopy = clone $item;
+			$itemCopy->setPagefilesParent($pagefiles);
+			$itemCopy->setFilename($pathname);
+			$itemCopy->isTemp(true);
+			
+			switch($options['action']) {
+				case 'append': $pagefiles->append($itemCopy); break;
+				case 'prepend': $pagefiles->prepend($itemCopy); break;
+				case 'before': $pagefiles->insertBefore($itemCopy, $item); break;
+				case 'after': $pagefiles->insertAfter($itemCopy, $item); break;
+			}
+			
+			$pagefiles->unTempQueue($itemCopy); 
+		} 
+		
+		return $itemCopy;
 	}
 
 	/**
@@ -520,6 +650,59 @@ class Pagefiles extends WireArray implements PageFieldValueInterface {
 			break;
 		}
 		return $item;
+	}
+	
+	/**
+	 * Get list of tags for all files in this Pagefiles array, or return files matching given tag(s)
+	 * 
+	 * This method can either return a list of all tags available, or return all files 
+	 * matching the given tag or tags (an alias of findTag method).
+	 * 
+	 * ~~~~~
+	 * // Get string of all tags
+	 * $tagsString = $page->files->tags(); 
+	 * 
+	 * // Get array of all tags
+	 * $tagsArray = $page->files->tags(true); 
+	 * 
+	 * // Find all files matching given tag
+	 * $pagefiles = $page->files->tags('foobar'); 
+	 * ~~~~~
+	 *
+	 * #pw-group-tags
+	 *
+	 * @param bool|string|array $value Specify one of the following:
+	 *  - Omit to return all tags as a string.
+	 *  - Boolean true if you want to return tags as an array (rather than string).
+	 *  - Boolean false to return tags as an array, with lowercase enforced.
+	 *  - String if you want to return files matching tags (See `Pagefiles::findTag()` method for usage)
+	 *  - Array if you want to return files matching tags (See `Pagefiles::findTag()` method for usage)
+	 * @return string|array|Pagefiles Returns all tags as a string or an array, or Pagefiles matching given tag(s). 
+	 *   When a tags array is returned, it is an associative array where the key and value are both the tag (keys are always lowercase).
+	 * @see Pagefiles::findTag(), Pagefile::tags()
+	 *
+	 */
+	public function tags($value = null) {
+		
+		if($value === null) {
+			$returnString = true; 
+			$value = true; 	
+		} else {
+			$returnString = false;
+		}
+		
+		if(is_bool($value)) {
+			// return array of tags
+			$tags = array();
+			foreach($this as $pagefile) {
+				$tags = array_merge($tags, $pagefile->tags($value));
+			}
+			if($returnString) $tags = implode(' ', $tags);
+			return $tags;
+		}
+		
+		// fallback to behavior of findTag
+		return $this->findTag($value); 
 	}
 
 	/**
@@ -666,6 +849,19 @@ class Pagefiles extends WireArray implements PageFieldValueInterface {
 	}
 
 	/**
+	 * Add Pagefile as item to have temporary status removed when Page is saved
+	 * 
+	 * #pw-internal
+	 * 
+	 * @param Pagefile $pagefile
+	 * 
+	 */
+	public function unTempQueue(Pagefile $pagefile) {
+		$this->addSaveHook();
+		$this->unTempQueue[] = $pagefile;	
+	}
+
+	/**
 	 * Is the given Pagefiles identical to this one?
 	 * 
 	 * #pw-internal
@@ -721,5 +917,29 @@ class Pagefiles extends WireArray implements PageFieldValueInterface {
 		return $this->formatted;
 	}
 
+	/**
+	 * Debug info
+	 * 
+	 * @return array
+	 * 
+	 */
+	public function __debugInfo() {
+		
+		$info = array(
+			'count' => $this->count(), 
+			'page' => $this->page ? $this->page->path() : '?',
+			'field' => $this->field ? $this->field->name : '?', 
+			'url' => $this->url(),
+			'path' => $this->path(), 
+			'items' => array(),
+		);
+		
+		foreach($this as $key => $pagefile) {
+			/** @var Pagefile $pagefile */
+			$info['items'][$key] = $pagefile->__debugInfo();
+		}
+		
+		return $info;
+	}
 
 }

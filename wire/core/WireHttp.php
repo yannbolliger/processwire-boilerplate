@@ -22,7 +22,7 @@
  * 
  * Thanks to @horst for his assistance with several methods in this class.
  * 
- * ProcessWire 3.x, Copyright 2016 by Ryan Cramer
+ * ProcessWire 3.x, Copyright 2018 by Ryan Cramer
  * https://processwire.com
  * 
  * @method bool|string send($url, $data = array(), $method = 'POST')
@@ -81,7 +81,29 @@ class WireHttp extends Wire {
 	 * @var array
 	 * 
 	 */
-	protected $errorCodes = array(
+	protected $httpCodes = array(
+		100 => 'Continue',
+		101 => 'Switching Protocols',
+		102 => 'Processing (WebDAV; RFC 2518)', 
+		200 => 'OK',
+		201 => 'Created',
+		202 => 'Accepted',
+		203 => 'Non-Authoritative Information',
+		204 => 'No Content',
+		205 => 'Reset Content',
+		206 => 'Partial Content',
+		207 => 'Multi-Status (WebDAV; RFC 4918)',
+		208 => 'Already Reported (WebDAV; RFC 5842)',
+		226 => 'IM Used (RFC 3229)',
+		300 => 'Multiple Choices',
+		301 => 'Moved Permanently',
+		302 => 'Found',
+		303 => 'See Other',
+		304 => 'Not Modified',
+		305 => 'Use Proxy',
+		306 => 'Switch Proxy',
+		307 => 'Temporary Redirect',
+		308 => 'Permanent Redirect',
 		400 => 'Bad Request',
 		401 => 'Unauthorized',
 		402 => 'Payment Required',
@@ -222,6 +244,22 @@ class WireHttp extends Wire {
 	protected $hasFopen = false;
 
 	/**
+	 * Options to pass to $sanitizer->url('url', $options) in WireHttp::validateURL() method
+	 * 
+	 * Can be modified with the setValidateURLOptions() method.
+	 * 
+	 * @var array
+	 * 
+	 */
+	protected $validateURLOptions = array(
+		'allowRelative' => false,
+		'requireScheme' => true,
+		'stripQuotes' => false,
+		'encodeSpace' => true,
+		'throw' => true,
+	);
+
+	/**
 	 * Construct/initialize
 	 * 
 	 */
@@ -238,7 +276,7 @@ class WireHttp extends Wire {
 	 * ~~~~~
 	 * $http = new WireHttp();
 	 * $response = $http->post("http://domain.com/path/", [
-	 *   'foo' => bar',
+	 *   'foo' => 'bar',
 	 * ]); 
 	 * if($response !== false) {
 	 *   echo "Successful response: " . $sanitizer->entities($response); 
@@ -303,8 +341,9 @@ class WireHttp extends Wire {
 	 *
 	 */
 	public function head($url, $data = array()) {
-		$responseHeader = $this->send($url, $data, 'HEAD');
-		return is_array($responseHeader) ? $responseHeader : false;
+		$this->send($url, $data, 'HEAD');
+		$responseHeaders = $this->getResponseHeaders();
+		return is_array($responseHeaders) ? $responseHeaders : false;
 	}
 
 	/**
@@ -428,6 +467,13 @@ class WireHttp extends Wire {
 
 		if(!empty($data)) $this->setData($data);
 		
+		if(!isset($this->headers['user-agent'])) {
+			// some web servers deliver a 400 error if no user-agent set in request header, so make sure one is set
+			$this->setHeader('user-agent', 
+				'ProcessWire/' . ProcessWire::versionMajor . '.' . ProcessWire::versionMinor . ' (' . $this->className() . ')'
+			);
+		}
+		
 		if(!in_array(strtoupper($method), $this->allowHttpMethods)) $method = 'POST';
 
 		if(!$this->hasFopen || strpos($url, 'https://') === 0 && !extension_loaded('openssl')) {
@@ -473,7 +519,7 @@ class WireHttp extends Wire {
 			
 		} else {
 			$code = $this->getHttpCode();
-			if($code && isset($this->errorCodes[$code])) {
+			if($code && $code >= 400 && isset($this->httpCodes[$code])) {
 				// known http error code, no need to fallback to sockets
 				$result = false;
 			} else if($code && $code >= 200 && $code < 300) {
@@ -697,17 +743,16 @@ class WireHttp extends Wire {
 		fclose($fp); 
 			
 		$methods = implode(", ", $triedMethods);
-		if(count($this->error) || isset($this->errorCodes[$this->httpCode])) {
-			unlink($toFile);
+		if(count($this->error) || ($this->httpCode >= 400 && isset($this->httpCodes[$this->httpCode]))) {
+			$this->wire('files')->unlink($toFile);
 			$error = $this->_('File could not be downloaded') . ' ' . htmlentities("($fromURL) ") . $this->getError() . " (tried: $methods)";
 			throw new WireException($error); 
 		} else {
 			$bytes = filesize($toFile); 
 			$this->message("Downloaded " . htmlentities($fromURL) . " => $toFile (using: $methods) [$bytes bytes]", Notice::debug); 
 		}
-		
-		$chmodFile = $this->wire('config')->chmodFile; 
-		if($chmodFile) chmod($toFile, octdec($chmodFile));
+	
+		$this->wire('files')->chmod($toFile);
 		
 		return $toFile;
 	}
@@ -889,21 +934,23 @@ class WireHttp extends Wire {
 	protected function setResponseHeader(array $responseHeader) {
 		
 		$this->responseHeader = $responseHeader;
+		$httpText = '';
+		$httpCode = 0;
 		
 		if(!empty($responseHeader[0])) {
-			list($http, $httpCode, $httpText) = explode(' ', trim($responseHeader[0]), 3); 
-			if($http) {} // ignore
+			list(/*HTTP*/, $httpCode) = explode(' ', trim($responseHeader[0]), 2); 
+			$httpCode = trim($httpCode);
+			if(strpos($httpCode, ' ')) list($httpCode, $httpText) = explode(' ', $httpCode, 2);
 			$httpCode = (int) $httpCode;
-			$httpText = preg_replace('/[^-_.;() a-zA-Z0-9]/', ' ', $httpText); 
-		} else {
-			$httpCode = 0;
-			$httpText = '';
+			if(strlen($httpText)) $httpText = preg_replace('/[^-_.;() a-zA-Z0-9]/', ' ', $httpText); 
 		}
 		
 		$this->httpCode = (int) $httpCode;
 		$this->httpCodeText = $httpText; 
 		
-		if(isset($this->errorCodes[$this->httpCode])) $this->error[] = $this->errorCodes[$this->httpCode]; 
+		if($this->httpCode >= 400 && isset($this->httpCodes[$this->httpCode])) {
+			$this->error[] = $this->httpCodes[$this->httpCode];
+		}
 
 		// parsed version
 		$this->responseHeaders = array();
@@ -1019,13 +1066,8 @@ class WireHttp extends Wire {
 	 * 
 	 */
 	public function validateURL($url, $throw = false) {
-		$options = array(
-			'allowRelative' => false, 
-			'allowSchemes' => $this->allowSchemes, 
-			'requireScheme' => true,
-			'stripQuotes' => false,
-			'throw' => true,
-			);
+		$options = $this->validateURLOptions;
+		$options['allowSchemes'] = $this->allowSchemes;
 		try {
 			$url = $this->wire('sanitizer')->url($url, $options); 
 		} catch(WireException $e) {
@@ -1069,8 +1111,8 @@ class WireHttp extends Wire {
 	 */
 	public function getError($getArray = false) {
 		$error = $getArray ? $this->error : implode(', ', $this->error); 
-		if(isset($this->errorCodes[$this->httpCode])) {
-			$httpError = "$this->httpCode " . $this->errorCodes[$this->httpCode];
+		if($this->httpCode >= 400 && isset($this->httpCodes[$this->httpCode])) {
+			$httpError = "$this->httpCode " . $this->httpCodes[$this->httpCode];
 			if($getArray) {
 				array_unshift($error, $httpError); 
 			} else {
@@ -1093,13 +1135,41 @@ class WireHttp extends Wire {
 	}
 
 	/**
+	 * Return array of all possible HTTP codes as (code => description)
+	 *
+	 * @return array
+	 *
+	 */
+	public function getHttpCodes() {
+		return $this->httpCodes;	
+	}
+	
+	/**
+	 * Return array of all possible HTTP success codes as (code => description)
+	 *
+	 * @return array
+	 *
+	 */
+	public function getSuccessCodes() {
+		$codes = array();
+		foreach($this->httpCodes as $code => $text) {
+			if($code < 400) $codes[$code] = $text;
+		}
+		return $codes;
+	}
+
+	/**
 	 * Return array of all possible HTTP error codes as (code => description)
 	 * 
 	 * @return array
 	 * 
 	 */
 	public function getErrorCodes() {
-		return $this->errorCodes;
+		$errorCodes = array();
+		foreach($this->httpCodes as $code => $text) {
+			if($code >= 400) $errorCodes[$code] = $text;
+		}
+		return $errorCodes;
 	}
 
 	/**
@@ -1127,6 +1197,24 @@ class WireHttp extends Wire {
 			}
 		}
 		return $this;
+	}
+
+	/**
+	 * Set options array given to $sanitizer->url() 
+	 * 
+	 * It should not be necessary to call this unless you are dealing with an unusual URL that is causing
+	 * errors with the default options in WireHttp. Note that the “allowSchemes” option is set separately
+	 * with the setAllowSchemes() method in this class. 
+	 * 
+	 * To return current validate URL options, omit the $options argument. 
+	 * 
+	 * @param array $options Options to set, see the $sanitizer->url() method for details on options. 
+	 * @return array Always returns current options 
+	 * 
+	 */
+	public function setValidateURLOptions(array $options = array()) {
+		if(!empty($options)) $this->validateURLOptions = array_merge($this->validateURLOptions, $options);
+		return $this->validateURLOptions;
 	}
 
 	/**
@@ -1174,6 +1262,7 @@ class WireHttp extends Wire {
 	 * 
 	 */
 	public function _errorHandler($errno, $errstr, $errfile, $errline, $errcontext) {
+		if($errfile || $errline || $errcontext) {} // ignore
 		$this->error[] = "$errno: $errstr";
 	}
 

@@ -2,7 +2,7 @@
  * Alternate Select Multiple (asmSelect) 1.3 - jQuery Plugin
  * http://www.ryancramer.com/projects/asmselect/
  * 
- * Copyright (c) 2009-2014 by Ryan Cramer - http://www.ryancramer.com
+ * Copyright (c) 2009-2018 by Ryan Cramer - http://www.ryancramer.com
  * 
  * Licensed under the MIT license. 
  *
@@ -16,7 +16,10 @@
 
 			listType: 'ol',						// Ordered list 'ol', or unordered list 'ul'
 			sortable: false, 					// Should the list be sortable?
+			addable: true, 						// Can items be added to selection?
+			deletable: true,					// Can items be removed from selection? 
 			highlight: false,					// Use the highlight feature? 
+			fieldset: false,					// Use fieldset support? (for PW Fieldset types)
 			animate: false,						// Animate the the adding/removing of items in the list?
 			addItemTarget: 'bottom',				// Where to place new selected items in list: top or bottom
 			hideWhenAdded: false,					// Hide the option when added to the list? works only in FF
@@ -68,20 +71,23 @@
 			var buildingSelect = false; 				// is the new select being constructed right now?
 			var ieClick = false;					// in IE, has a click event occurred? ignore if not
 			var ignoreOriginalChangeEvent = false;			// originalChangeEvent bypassed when this is true
+			var fieldsetCloseItems = {};
 			var msie = 0; 
 
 			function init() {
 
 				// initialize the alternate select multiple
+				if(options.deletable && !options.addable) options.hideDeleted = false;
 
 				// this loop ensures uniqueness, in case of existing asmSelects placed by ajax (1.0.3)
-				while($("#" + options.containerClass + index).size() > 0) index++; 
+				while($("#" + options.containerClass + index).length > 0) index++; 
 
 				$select = $("<select></select>")
 					.addClass(options.selectClass)
 					.addClass($original.attr('class'))
 					.attr('name', options.selectClass + index)
 					.attr('id', options.selectClass + index); 
+				if(!options.addable) $select.hide();
 
 				$selectRemoved = $("<select></select>"); 
 
@@ -108,9 +114,19 @@
 				}
 
 				if(msie > 0 && msie < 8) $ol.css('display', 'inline-block'); // Thanks Matthew Hutton
+				
+				if(options.fieldset) {
+					setupFieldsets();
+					$original.children('option').each(function() {
+						var name = $(this).text();
+						if(name.indexOf('_END') > 0 && name.substring(name.length - 4) == '_END') {
+							fieldsetCloseItems[name] = $(this);
+						}
+					});
+				}
 
 				$original.trigger('init'); 
-			
+				
 				if(options.editLinkModal === 'longclick') {
 					$ol.on('longclick', 'a.asmEditLinkModalLongclick', clickEditLink);
 				}
@@ -120,6 +136,8 @@
 
 				// make any items in the selected list sortable
 				// requires jQuery UI sortables, draggables, droppables
+				
+				var fieldsetItems = [];
 
 				$ol.sortable({
 					items: 'li.' + options.listItemClass,
@@ -133,26 +151,41 @@
 						updatedOptionId = $option.attr('id'); 
 
 						$(this).children("li").each(function(n) {
-
 							$option = $('#' + $(this).attr('rel')); 
 							$original.append($option); 
-
-							/* this doesn't seem to work in newer versions of jquery
-							if($(this).is(".ui-sortable-helper")) {
-								updatedOptionId = $option.attr('id'); 
-								return;
-							}
-							*/
-
 						}); 
 
 						if(updatedOptionId) triggerOriginalChange(updatedOptionId, 'sort'); 
 					},
 					start: function(e, data) {
 						if(options.jQueryUI) data.item.addClass('ui-state-highlight'); 
+						if(data.item.hasClass('asmFieldsetStart')) {
+							var $next = data.item;
+							var stopName = data.item.find('.asmListItemLabel').text() + '_END';
+							do {
+								if($next.find('.asmListItemLabel').text() == stopName) break;
+								$next = $next.next('li');
+								if($next.length && !$next.hasClass('ui-sortable-placeholder')) {
+									$next.fadeTo(50, 0.7).slideUp('fast');
+									fieldsetItems.push($next); 
+								}
+							} while($next.length);
+						}
 					},
 					stop: function(e, data) {
 						if(options.jQueryUI) data.item.removeClass('ui-state-highlight'); 
+						if(data.item.hasClass('asmFieldsetStart')) {
+							var $lastItem = data.item;
+							
+							for(var n = 0; n < fieldsetItems.length; n++) {
+								var $item = fieldsetItems[n];
+								$lastItem.after($item); 
+								$lastItem = $item;
+								$item.slideDown('fast').fadeTo('fast', 1.0); 
+							}
+							fieldsetItems = [];
+						}
+						setupFieldsets();
 					}
 
 				}).addClass(options.listSortableClass); 
@@ -198,6 +231,8 @@
 				if(typeof $.browser != "undefined") {
 					if ($.browser.opera) $ol.hide().fadeIn("fast");
 				}
+				
+				if(options.fieldset) setupFieldsets();
 			}
 
 			function buildSelect() {
@@ -275,7 +310,7 @@
 					.attr("disabled", true);
 
 				if(options.hideWhenEmpty) {
-					if($option.siblings('[disabled!=true]').size() < 2) $select.hide();
+					if($option.siblings('[disabled!=true]').length < 2) $select.hide();
 				}
 
 				if(options.hideWhenAdded) $option.hide();
@@ -297,12 +332,12 @@
 			function addListItem(optionId) {
 
 				// add a new item to the html list
-
 				var $O = $('#' + optionId); 
 
 				if(!$O) return; // this is the first item, selectLabel
 
-				var $removeLink = $("<a></a>")
+				var $removeLink = null;
+				if(options.deletable) $removeLink = $("<a></a>")
 					.attr("href", "#")
 					.addClass(options.removeClass)
 					.prepend(options.removeLabel)
@@ -358,9 +393,9 @@
 					.addClass(options.listItemClass)
 					.append($itemLabel)
 					.append($itemDesc)
-					.append($itemStatus)
-					.append($removeLink)
-					.hide();
+					.append($itemStatus);
+				if($removeLink) $item.append($removeLink);
+				$item.hide();
 
 				if(options.jQueryUI) {
 					$item.addClass('ui-state-default')
@@ -400,6 +435,18 @@
 					setHighlight($item, options.highlightAddedLabel); 
 					selectFirstItem();
 					if(options.sortable) $ol.sortable("refresh"); 	
+					if(options.fieldset) {
+						var itemName = $O.text();
+						if(itemName.indexOf('_END') > 0 && itemName.substring(itemName.length - 4) == '_END') {
+							$item.addClass('asmFieldset asmFieldsetEnd'); 
+						} else {
+							var fieldsetCloseName = itemName + '_END';
+							if(typeof fieldsetCloseItems[fieldsetCloseName] != "undefined") {
+								$item.addClass('asmFieldset asmFieldsetStart');
+								addListItem(fieldsetCloseItems[fieldsetCloseName].attr('id'));
+							}
+						}
+					}
 				}
 
 			}
@@ -571,17 +618,21 @@
 										$asmItem.effect('highlight', {}, 500); 
 										
 										var $asmSetStatus = $icontents.find('#' + options.listItemStatusClass); // first try to find by ID
-										if($asmSetStatus.size() == 0) $asmSetStatus = $icontents.find(':input.' + options.listItemStatusClass); // then by class, if not ID
-										if($asmSetStatus.size() > 0) $asmItem.find('.' + options.listItemStatusClass).html($asmSetStatus.eq(0).val());
+										if($asmSetStatus.length == 0) $asmSetStatus = $icontents.find(':input.' + options.listItemStatusClass); // then by class, if not ID
+										if($asmSetStatus.length > 0) $asmItem.find('.' + options.listItemStatusClass).html($asmSetStatus.eq(0).val());
 										
 										var $asmSetDesc = $icontents.find('#' + options.listItemDescClass); // first try to find by ID
-										if($asmSetDesc.size() == 0) $asmSetDesc = $icontents.find(':input.' + options.listItemDescClass); // then by class, if not ID
-										if($asmSetDesc.size() > 0) {
-											$asmSetDesc = $asmSetDesc.eq(0); 
+										if($asmSetDesc.length == 0) $asmSetDesc = $icontents.find(':input.' + options.listItemDescClass); // then by class, if not ID
+										if($asmSetDesc.length > 0) {
+											$asmSetDesc = $asmSetDesc.eq(0);
+											var asmSetDesc = $('<textarea />').text($asmSetDesc.val()).html();
 											var $desc = $asmItem.find('.' + options.listItemDescClass);
 											var $descA = $desc.find('a'); // does it have an <a> in there?
-											if($descA.size() > 0) $descA.html($asmSetDesc.val()); 
-												else $desc.html($asmSetDesc.val());
+											if($descA.length > 0) {
+												$descA.html(asmSetDesc);
+											} else {
+												$desc.html(asmSetDesc);
+											}
 										}
 									}
 									$iframe.dialog('close'); 
@@ -594,6 +645,31 @@
 					$iframe.setButtons(buttons); 
 				}); 
 				return false; 
+			}
+			
+			function setupFieldsets() {
+				$ol.find('span.asmFieldsetIndent').remove();
+				var $items = $ol.children('li');
+			
+				$ol.children('li').children('span.asmListItemLabel').each(function() {
+					var $t = $(this);
+					var label = $t.text();
+					if(label.substring(label.length-4) != '_END') return;
+					label = label.substring(0, label.length-4);
+					var $li = $(this).closest('li.asmListItem');
+					$li.addClass('asmFieldset asmFieldsetEnd');
+					while(1) {
+						$li = $li.prev('li.asmListItem');
+						if($li.length < 1) break;
+						var $span = $li.children('span.asmListItemLabel'); 
+						var label2 = $span.text();
+						if(label2 == label) {
+							$li.addClass('asmFieldset asmFieldsetStart');
+							break;
+						}
+						$span.prepend($('<span class="asmFieldsetIndent"></span>'));
+					}
+				});
 			}
 
 			init();

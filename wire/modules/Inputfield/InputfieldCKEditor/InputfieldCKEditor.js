@@ -6,6 +6,48 @@
  */
 
 /**
+ * Get ProcessWire config settings for given CKE editor object or name
+ *
+ * @param editor
+ * @returns {*}
+ *
+ */
+function ckeGetProcessWireConfig(editor) {
+
+	var editorName = typeof editor == "string" ? editor : editor.name;
+	var configName = editorName.replace('Inputfield_', 'InputfieldCKEditor_');
+	var $repeaterItem = '';
+	var settings = {};
+	
+	configName = configName.replace('Inputfield_', 'InputfieldCKEditor_');
+
+	if(typeof ProcessWire.config[configName] == "undefined" && configName.indexOf('_repeater') > 0) {
+		configName = configName.replace(/_repeater[0-9]+/, '');
+		$repeaterItem = $('#' + editorName).closest('.InputfieldRepeaterItem');
+	}
+	if(typeof ProcessWire.config[configName] == "undefined" && configName.indexOf('_ckeditor') > 0) {
+		configName = configName.replace(/_ckeditor$/, ''); // inline only
+	}
+	if(typeof ProcessWire.config[configName] == "undefined" && configName.indexOf('__') > 0) {
+		configName = configName.replace(/__\d+$/, ''); // remove language-id
+	}
+	if(typeof ProcessWire.config[configName] == "undefined") {
+		settings.error = 'Cannot find CKEditor settings for ' + configName;
+	} else {
+		settings = ProcessWire.config[configName];
+	}
+
+	if($repeaterItem.length) {
+		settings['repeaterItem'] = $repeaterItem;
+	} else {
+		settings['repeaterItem'] = '';
+	}
+	
+	return settings;
+}
+
+
+/**
  * Add external plugins
  * 
  * These are located in:
@@ -66,6 +108,46 @@ function ckeResizeEvent(event) {
 }
 
 /**
+ * Handler for fileUploadRequest event
+ * 
+ * @param event
+ * 
+ */
+function ckeUploadEvent(event) {
+	
+	var xhr = event.data.fileLoader.xhr;
+	var fileLoader = event.data.fileLoader;
+	var settings = ckeGetProcessWireConfig(event.editor);
+	var uploadFieldName = settings ? settings.pwUploadField : '_unknown';
+	var $imageInputfield = $('#Inputfield_' + uploadFieldName); 
+
+	if(typeof settings.repeaterItem != "undefined" && settings.repeaterItem.length) {
+		var $repeaterImageField = settings.repeaterItem.find('.InputfieldImage:not(.InputfieldFileSingle)');
+		if($repeaterImageField.length) $imageInputfield = $repeaterImageField;
+	}
+
+	if($imageInputfield.length) {
+		xhr.open("POST", fileLoader.uploadUrl, true);
+		$imageInputfield.trigger('pwimageupload', {
+			'name': fileLoader.fileName,
+			'file': fileLoader.file,
+			'xhr': xhr
+		});
+
+		// Prevented the default behavior.
+		event.stop();
+	} else {
+		if(typeof settings.error != "undefined" && settings.error.length) {
+			ProcessWire.alert(settings.error);
+		} else {
+			ProcessWire.alert('Unable to find images field for upload');
+		}
+		event.stop();
+		return false;
+	}
+}
+
+/**
  * Attach events common to all CKEditor instances
  *
  * @param editor CKEditor instance
@@ -77,6 +159,7 @@ function ckeInitEvents(editor) {
 	editor.on('focus', ckeFocusEvent);
 	editor.on('change', ckeBlurEvent);
 	editor.on('resize', ckeResizeEvent);
+	editor.on('fileUploadRequest', ckeUploadEvent, null, null, 4); 
 
 	var $textarea = $(editor.element.$);
 	var $inputfield = $textarea.closest('.Inputfield.InputfieldColumnWidth');

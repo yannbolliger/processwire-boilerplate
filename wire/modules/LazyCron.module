@@ -85,7 +85,7 @@ class LazyCron extends WireData implements Module {
 				"is guaranteed to be at least the time requested, rather than exactly the " . 
 				"time requested. This is fine for most cases, but you can make it not lazy " . 
 				"by connecting this to a real CRON job. See the module file for details. ", 
-			'href' => 'http://processwire.com/talk/index.php/topic,284.0.html',
+			'href' => 'https://processwire.com/api/modules/lazy-cron/',
 			'permanent' => false, 
 			'singular' => true, 
 			'autoload' => true, 
@@ -151,7 +151,7 @@ class LazyCron extends WireData implements Module {
 			// other LazyCron process potentially running
 			if(filemtime($lockfile) < (time() - 3600)) {
 				// expired lock file, some fatal error must have occurred during last LazyCron run
-				@unlink($lockfile); 
+				$this->wire('files')->unlink($lockfile); 
 			} else {
 				// skip running this time as an active lock file exists
 				return;
@@ -168,7 +168,7 @@ class LazyCron extends WireData implements Module {
 
 			// file is probably locked, so skip it this time
 			if($filedata === false) {
-				@unlink($lockfile);
+				$this->wire('files')->unlink($lockfile);
 				return; 
 			}
 		} else {
@@ -210,7 +210,7 @@ class LazyCron extends WireData implements Module {
 			if($this->config->chmodFile) @chmod($filename, octdec($this->config->chmodFile));
 		}
 
-		@unlink($lockfile); 
+		$this->wire('files')->unlink($lockfile); 
 	}
 
 	/**

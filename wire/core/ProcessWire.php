@@ -17,7 +17,7 @@ require_once(__DIR__ . '/boot.php');
  * ~~~~~
  * #pw-body
  * 
- * ProcessWire 3.x, Copyright 2017 by Ryan Cramer
+ * ProcessWire 3.x, Copyright 2018 by Ryan Cramer
  * https://processwire.com
  * 
  * @method init()
@@ -26,7 +26,6 @@ require_once(__DIR__ . '/boot.php');
  * 
  * 
  */
-
 class ProcessWire extends Wire {
 
 	/**
@@ -45,7 +44,7 @@ class ProcessWire extends Wire {
 	 * Reversion revision number
 	 * 
 	 */
-	const versionRevision = 62;
+	const versionRevision = 123;
 
 	/**
 	 * Version suffix string (when applicable)
@@ -204,11 +203,12 @@ class ProcessWire extends Wire {
 
 		$this->wire('hooks', new WireHooks($this, $config), true);
 
-		$this->shutdown = $this->wire(new WireShutdown());
 		$this->setConfig($config);
+		$this->shutdown = $this->wire(new WireShutdown($config));
+		$this->setStatus(self::statusBoot);
 		$this->load($config);
 		
-		if($this->getNumInstances() > 1) {
+		if(self::getNumInstances() > 1) {
 			// this instance is not handling the request and needs a mock $page API var and pageview
 			/** @var ProcessPageView $view */
 			$view = $this->wire('modules')->get('ProcessPageView');
@@ -220,7 +220,7 @@ class ProcessWire extends Wire {
 		$str = $this->className() . " ";
 		$str .= self::versionMajor . "." . self::versionMinor . "." . self::versionRevision; 
 		if(self::versionSuffix) $str .= " " . self::versionSuffix;
-		if($this->getNumInstances() > 1) $str .= " #$this->instanceID";
+		if(self::getNumInstances() > 1) $str .= " #$this->instanceID";
 		return $str;
 	}
 
@@ -274,22 +274,27 @@ class ProcessWire extends Wire {
 			$config->debug = $debugIf;
 		}
 
-		// If script is being called externally, add an extra shutdown function 
-		if(!$config->internal) register_shutdown_function(function() {
-			if(error_get_last()) return;
-			$process = isset($this) ? $this->wire('process') : wire('process');
-			if($process == 'ProcessPageView') $process->finished();
-		});
-		
 		if($config->useFunctionsAPI) {
 			$file = $config->paths->core . 'FunctionsAPI.php';
 			/** @noinspection PhpIncludeInspection */
 			include_once($file);
 		}
-		
 
-
-		$this->setStatus(self::statusBoot);
+		// check if noHTTPS option is using conditional hostname
+		if($config->noHTTPS && $config->noHTTPS !== true) {
+			$noHTTPS = $config->noHTTPS;
+			$httpHost = $config->httpHost;
+			if(is_string($noHTTPS)) $noHTTPS = array($noHTTPS);
+			if(is_array($noHTTPS)) {
+				$config->noHTTPS = false;
+				foreach($noHTTPS as $host) {
+					if($host === $httpHost) {
+						$config->noHTTPS = true;
+						break;
+					}
+				}
+			}
+		}
 	}
 
 	/**
@@ -432,7 +437,8 @@ class ProcessWire extends Wire {
 		$session = $this->wire('session', new Session($this), true); 
 		$this->initVar('session', $session);
 		$this->wire('user', $users->getCurrentUser()); 
-		$this->wire('input', new WireInput(), true); 
+		$input = $this->wire('input', new WireInput(), true); 
+		if($config->wireInputLazy) $input->setLazy(true);
 
 		// populate admin URL before modules init()
 		$config->urls->admin = $config->urls->root . ltrim($pages->getPath($config->adminRootPageID), '/');
@@ -735,6 +741,41 @@ class ProcessWire extends Wire {
 	}
 
 	/**
+	 * Get root path, check it, and optionally auto-detect it if not provided
+	 * 
+	 * @param bool|string $rootPath Root path if already known, in which case we’ll just modify as needed
+	 * @return string
+	 * 
+	 */
+	protected static function getRootPath($rootPath = '') {
+		
+		if(strpos($rootPath, '..') !== false) {
+			$rootPath = realpath($rootPath);
+		}
+
+		if(empty($rootPath) && !empty($_SERVER['SCRIPT_FILENAME'])) {
+			// first try to determine from the script filename
+			$parts = explode(DIRECTORY_SEPARATOR, $_SERVER['SCRIPT_FILENAME']);
+			array_pop($parts); // most likely: index.php
+			$rootPath = implode('/', $parts) . '/';
+			if(!file_exists($rootPath . 'wire/core/ProcessWire.php')) $rootPath = '';
+		}
+		
+		if(empty($rootPath)) {
+			// if unable to determine from script filename, attempt to determine from current file
+			$parts = explode(DIRECTORY_SEPARATOR, __FILE__);
+			$parts = array_slice($parts, 0, -3); // removes "ProcessWire.php", "core" and "wire"
+			$rootPath = implode('/', $parts) . '/';
+		}
+		
+		if(DIRECTORY_SEPARATOR != '/') {
+			$rootPath = str_replace(DIRECTORY_SEPARATOR, '/', $rootPath);
+		}
+
+		return $rootPath; 
+	}
+
+	/**
 	 * Static method to build a Config object for booting ProcessWire
 	 * 
 	 * @param string $rootPath Path to root of installation where ProcessWire's index.php file is located.
@@ -745,14 +786,9 @@ class ProcessWire extends Wire {
 	 * @return Config
 	 * 
 	 */
-	public static function buildConfig($rootPath, $rootURL = null, array $options = array()) {
-		
-		if(DIRECTORY_SEPARATOR != '/') {
-			$rootPath = str_replace(DIRECTORY_SEPARATOR, '/', $rootPath);
-		}
-
-		if(strpos($rootPath, '..') !== false) $rootPath = realpath($rootPath);
-		
+	public static function buildConfig($rootPath = '', $rootURL = null, array $options = array()) {
+	
+		$rootPath = self::getRootPath($rootPath);
 		$httpHost = '';
 		$scheme = '';
 		$siteDir = isset($options['siteDir']) ? $options['siteDir'] : 'site';
@@ -781,7 +817,7 @@ class ProcessWire extends Wire {
 			$testDir = array_pop($parts);
 			if(($testDir === $siteDir || strpos($testDir, 'site-') === 0) && is_file("$rootPath/config.php")) {
 				// rootPath was given as a /site/ directory rather than root directory
-				$rootPath = '/' . implode('/', $parts); // remove siteDir from rootPath
+				$rootPath = implode('/', $parts); // remove siteDir from rootPath
 				$siteDir = $testDir; // set proper siteDir
 			}
 		} 
@@ -804,7 +840,7 @@ class ProcessWire extends Wire {
 			unset($sf, $f, $x);
 		
 			// when internal is true, we are not being called by an external script
-			$cfg['internal'] = $realIndexFile == $realScriptFile;
+			$cfg['internal'] = strtolower($realIndexFile) == strtolower($realScriptFile);
 
 		} else {
 			// when included from another app or command line script

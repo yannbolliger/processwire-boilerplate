@@ -21,7 +21,7 @@ class LanguageSupportPageNames extends WireData implements Module, ConfigurableM
 	static public function getModuleInfo() {
 			return array(
 				'title' => 'Languages Support - Page Names',
-				'version' => 9,
+				'version' => 10,
 				'summary' => 'Required to use multi-language page names.',
 				'author' => 'Ryan Cramer',
 				'autoload' => true,
@@ -102,6 +102,7 @@ class LanguageSupportPageNames extends WireData implements Module, ConfigurableM
 		$this->addHookAfter('PageFinder::getQuery', $this, 'hookPageFinderGetQuery'); 
 
 		// tell ProcessPageView which segments are allowed for pagination
+		$config = $this->wire('config');
 		$pageNumUrlPrefixes = array();
 		$fields = $this->wire('fields');
 		foreach($this->wire('languages') as $language) {
@@ -109,7 +110,10 @@ class LanguageSupportPageNames extends WireData implements Module, ConfigurableM
 			if($pageNumUrlPrefix) $pageNumUrlPrefixes[] = $pageNumUrlPrefix;
 			$fields->setNative("name$language"); 
 		}
-		if(count($pageNumUrlPrefixes)) $this->wire('config')->set('pageNumUrlPrefixes', $pageNumUrlPrefixes); 
+		if(count($pageNumUrlPrefixes)) {
+			$pageNumUrlPrefixes[] = $config->pageNumUrlPrefix; // original/fallback prefix
+			$config->set('pageNumUrlPrefixes', $pageNumUrlPrefixes);
+		}
 	}
 
 	/**
@@ -158,7 +162,11 @@ class LanguageSupportPageNames extends WireData implements Module, ConfigurableM
 		
 		$language = $this->wire('user')->language; 
 		$prefix = $this->get("pageNumUrlPrefix$language"); 
-		if(strlen($prefix)) $this->wire('config')->pageNumUrlPrefix = $prefix; 
+		if(strlen($prefix)) {
+			$config = $this->wire('config');
+			$config->set('_pageNumUrlPrefix', $config->pageNumUrlPrefix); // origial/backup url prefix
+			$config->pageNumUrlPrefix = $prefix;
+		}
 	}
 
 	/**
@@ -178,6 +186,8 @@ class LanguageSupportPageNames extends WireData implements Module, ConfigurableM
 		$sitePath = '/' . implode('/', $segments) . '/'; // combine to [/subdir]/site/
 		$sitePath = str_replace($config->urls->root, '', $sitePath); // remove possible subdir, reduce to: site/
 		// if it is a request to assets, then don't attempt to modify it
+		$sitePath = rtrim($sitePath, '/') . '/';
+		$path = rtrim($path, '/') . '/';
 		return strpos($path, $sitePath) === 0;
 	}
 
@@ -238,6 +248,7 @@ class LanguageSupportPageNames extends WireData implements Module, ConfigurableM
 
 		// determine if we should set the current language based on requested URL
 		if(!$setLanguage) foreach($parentsAndPage as $p) {
+			/** @var Page $p */
 
 			$requestedPart = strtolower(array_shift($requestedParts)); 
 			if($requestedPart === $p->name) continue; 
@@ -402,6 +413,10 @@ class LanguageSupportPageNames extends WireData implements Module, ConfigurableM
 		if($this->force404) {
 			$this->force404 = false; // prevent another 404 on the 404 page
 			throw new Wire404Exception();
+			// $page = $event->wire('page');		
+			// if(!$page || ($page->id != $event->wire('config')->http404PageID)) {
+			//	throw new Wire404Exception();
+			// }
 		}
 	}
 
@@ -555,15 +570,81 @@ class LanguageSupportPageNames extends WireData implements Module, ConfigurableM
 			// set language page name
 			$name = $inputfield->attr('name') . $language;
 			$value = $sanitizer->pageNameUTF8($input->$name);
+			
+			// if it matches the value for the default language, avoid double storing it
 			if($value === $page->name) $value = '';
+			
+			// if it matches the value already on the page, then no need to go further
 			$key = "name$language";
 			if($value == $page->get($key)) continue; 
+			
+			$parentID = $page->parent_id;
+			if(!$parentID) $parentID = (int) $this->wire('input')->post('parent_id');
+			if(!$this->checkLanguagePageName($language, $page, $parentID, $value, $inputfield)) continue;
+
 			if($page->id) {
 				$page->set($key, $value);
 			} else {
 				$page->setQuietly($key, $value); // avoid non-template exception when new page
 			}
 		}
+	}
+
+	/**
+	 * Check changed page name for given language
+	 * 
+	 * @param Language $language
+	 * @param Page $page
+	 * @param int $parentID
+	 * @param string $value New page name
+	 * @param Wire|null $errorTarget Object to send error to (Inputfield likely)
+	 * @return bool True if all good, false if not
+	 * 
+	 */
+	public function checkLanguagePageName(Language $language, Page $page, $parentID, $value, Wire $errorTarget = null) {
+		// verify that it does not conflict with another page inheriting name from default language
+		$isValid = true;
+		$nameKey = "name$language->id";
+		
+		if(!strlen($value)) return true; 
+		
+		if($this->wire('config')->pageNameCharset == 'UTF8') {
+			$value = $this->wire('sanitizer')->pageName($value, Sanitizer::toAscii); 
+		}
+		
+		$sql =
+			"SELECT id, name, $nameKey FROM pages " .
+			"WHERE parent_id=:parent_id " .
+			"AND id!=:id " .
+			"AND (" .
+				"(name=:newName AND $nameKey IS NULL) " . // default name matches and lang name inherits it (is null)
+				"OR ($nameKey=:newName2)" . // or lang name is same as requested one
+			")";
+		
+		$query = $this->wire('database')->prepare($sql);
+		$query->bindValue(':parent_id', $parentID, \PDO::PARAM_INT);
+		$query->bindValue(':newName', $value);
+		$query->bindValue(':newName2', $value);
+		$query->bindValue(':id', $page->id, \PDO::PARAM_INT);
+		
+		try {
+			$query->execute();
+			$row = $query->fetch(\PDO::FETCH_ASSOC); 
+			if($row) {
+				$isValid = false;
+				if($errorTarget) $errorTarget->error(sprintf(
+					$this->_('A sibling page (id=%1$d) is already using name "%2$s" for language: %3$s'), 
+					$row['id'], $value, $language->get('title|name')
+				));
+			}
+		} catch(\Exception $e) {
+			$this->error($e->getMessage());
+			$isValid = false;
+		}
+		
+		$query->closeCursor();
+		
+		return $isValid;
 	}
 
 	/**
@@ -609,18 +690,23 @@ class LanguageSupportPageNames extends WireData implements Module, ConfigurableM
 	/**
 	 * Add a Page::localName function with optional $language as argument
 	 *
-	 * event param Language|string|int Optional language 
+	 * event param Language|string|int|bool Optional language, or boolean true for behavior of 2nd argument. 
+	 * event param bool Substitute default language page name when page name is not defined for requested language.
 	 * event return string Localized language name or blank if not set
 	 * 
 	 * @param HookEvent $event
 	 *
 	 */
 	public function hookPageLocalName(HookEvent $event) {
+		/** @var Page $page */
 		$page = $event->object; 
 		$language = $this->getLanguage($event->arguments(0)); 
 		$nameField = $language->isDefault() ? "name" : "name$language";
 		$value = $page->get($nameField);
 		if(is_null($value)) $value = '';
+		if(empty($value) && $nameField !== 'name' && ($event->arguments(0) === true || $event->arguments(1) === true)) {
+			$value = $page->name;
+		}
 		$event->return = $value; 
 	}
 
@@ -774,18 +860,22 @@ class LanguageSupportPageNames extends WireData implements Module, ConfigurableM
 
 		/** @var Page $page */
 		$page = $event->arguments[0];
+		
 		/** @var Pages $pages */
 		$pages = $event->object; 
+	
+		/** @var Sanitizer $sanitizer */
+		$sanitizer = $this->wire('sanitizer');
+	
+		/** @var array $extraData */
 		$extraData = $event->return; 
-		if(!is_array($extraData)) $extraData = array();
+		
 		$alwaysActiveTypes = array('User', 'Role', 'Permission', 'Language'); 
 		$pageNameCharset = $this->wire('config')->pageNameCharset;
+		$isCloning = $pages->editor()->isCloning();
 		
-		$defaultN = 1;
-		if($pages->cloning && preg_match('/^(.+)-(\d+)$/', $page->name, $matches)) {
-			$defaultN = (int) $matches[2];
-		}
-
+		if(!is_array($extraData)) $extraData = array();
+		
 		foreach($this->wire('languages') as $language) {
 			
 			if($language->isDefault()) continue; 
@@ -793,21 +883,20 @@ class LanguageSupportPageNames extends WireData implements Module, ConfigurableM
 
 			// populate a name123 field for each language
 			$name = "name$language_id";
-			$value = $this->wire('sanitizer')->pageNameUTF8($page->get($name)); 
+			$value = $sanitizer->pageNameUTF8($page->get($name)); 
 			if(!strlen($value)) {
 				$value = 'NULL';
-			} else if($pages->cloning) {
+			} else if($isCloning) {
 				// this save is the result of a clone() operation
 				// make sure that the name is unique for other languages
-				$newValue = $value;
-				while($page->parent->children("$name=$newValue, include=all")->count() > 0) {
-					$newValue = $value . "-$defaultN";
-					$defaultN++;
-				}
-				$value = $newValue; 
+				$value = $pages->names()->uniquePageName(array(
+					'name' => $value, 
+					'page' => $page, 
+					'language' => $language, 
+				));
 			}
 			if($pageNameCharset == 'UTF8') {
-				$extraData[$name] = $this->wire('sanitizer')->pageName($value, Sanitizer::toAscii);
+				$extraData[$name] = $sanitizer->pageName($value, Sanitizer::toAscii);
 			} else {
 				$extraData[$name] = $value;
 			}
@@ -1037,15 +1126,20 @@ class LanguageSupportPageNames extends WireData implements Module, ConfigurableM
 		$module = $this->wire('modules')->get('LanguageSupportPageNames'); 
 		$module->checkModuleVersion(true); 
 		$inputfields = $this->wire(new InputfieldWrapper());
-
+		$config = $this->wire('config');
+		$defaultUrlPrefix = $config->get('_pageNumUrlPrefix|pageNumUrlPrefix');
+		
 		foreach($this->wire('languages') as $language) {
 			$f = $this->wire('modules')->get('InputfieldName'); 
 			$name = "pageNumUrlPrefix$language";
-			if($language->isDefault() && empty($data[$name])) $data[$name] = $this->wire('config')->pageNumUrlPrefix;
+			if($language->isDefault() && empty($data[$name])) $data[$name] = $defaultUrlPrefix;
 			$f->attr('name', $name); 
 			$f->attr('value', isset($data[$name]) ? $data[$name] : ''); 
 			$f->label = "$language->title ($language->name) - " . $this->_('Page number prefix for pagination'); 
-			$f->description = sprintf($this->_('The page number is appended to this word in paginated URLs for this language. If omitted, "%s" will be used.'), $this->wire('config')->pageNumUrlPrefix); 
+			$f->description = sprintf(
+				$this->_('The page number is appended to this word in paginated URLs for this language. If omitted, "%s" will be used.'), 
+				$defaultUrlPrefix
+			); 
 			$f->required = false;
 			$inputfields->add($f); 
 		}

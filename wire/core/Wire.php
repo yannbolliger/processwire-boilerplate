@@ -529,7 +529,7 @@ abstract class Wire implements WireTranslatable, WireFuelable, WireTrackable {
 	 *
 	 * @param string $method Method or property to run hooks for.
 	 * @param array $arguments Arguments passed to the method and hook. 
-	 * @param string $type May be either 'method' or 'property', depending on the type of call. Default is 'method'.
+	 * @param string|array $type May be either 'method', 'property' or array of hooks (from getHooks) to run. Default is 'method'.
 	 * @return array Returns an array with the following information: 
 	 * 	[return] => The value returned from the hook or NULL if no value returned or hook didn't exist. 
 	 *	[numHooksRun] => The number of hooks that were actually run. 
@@ -597,8 +597,8 @@ abstract class Wire implements WireTranslatable, WireFuelable, WireTrackable {
 	 * - Also considers the class parents for hooks. 
 	 * 
 	 * ~~~~~
-	 * if($pages->hasHook('find')) {
-	 *   // the Pages::find method is hooked
+	 * if($pages->hasHook('find()')) {
+	 *   // the Pages::find() method is hooked
 	 * }
 	 * ~~~~~
 	 *
@@ -1002,7 +1002,7 @@ abstract class Wire implements WireTranslatable, WireFuelable, WireTrackable {
 			if(is_null($old) || is_null($new) || $lastValue !== $new) {
 				/** @var WireHooks $hooks */
 				$hooks = $this->wire('hooks');
-				if(($hooks && $hooks->isHooked('changed')) || !$hooks) {
+				if(($hooks && $hooks->isHooked('changed()')) || !$hooks) {
 					$this->changed($what, $old, $new); // triggers ___changed hook
 				} else {
 					$this->___changed($what, $old, $new); 
@@ -1086,12 +1086,12 @@ abstract class Wire implements WireTranslatable, WireFuelable, WireTrackable {
 	}
 
 	/**
-	 * Returns true if change tracking is on, or false if it is not. 
+	 * Returns true or 1 if change tracking is on, or false or 0 if it is not, or mode bitmask (int) if requested. 
 	 * 
 	 * #pw-group-changes
 	 *
-	 * @param bool $getMode When true, the track changes mode bitmask will be returned rather than a boolean
-	 * @return bool|int 
+	 * @param bool $getMode When true, the track changes mode bitmask will be returned 
+	 * @return int|bool 0/false if off, 1/true if On, or mode bitmask if requested 
 	 * 
 	 */
 	public function trackChanges($getMode = false) {
@@ -1128,14 +1128,27 @@ abstract class Wire implements WireTranslatable, WireFuelable, WireTrackable {
 	 * 
 	 * #pw-group-changes
 	 *
-	 * @param bool $getValues Specify true to return an associative array containing an array of previous values, indexed by 
-	 *   property name, oldest to newest. Requires Wire::trackChangesValues mode to be enabled. 
+	 * @param bool $getValues Specify one of the following, or omit for default setting. 
+	 *  - `false` (bool): return array of changed property names (default setting).
+	 *  - `true` (bool): return an associative array containing an array of previous values, indexed by 
+	 *     property name, oldest to newest. Requires Wire::trackChangesValues mode to be enabled. 
+	 *  - `2` (int): Return array where both keys and values are changed property names. 
 	 * @return array
 	 *
 	 */
 	public function getChanges($getValues = false) {
-		if($getValues) return $this->changes; 
-		return array_keys($this->changes); 
+		if($getValues === 2) {
+			$changes = array();
+			foreach($this->changes as $name => $value) {
+				if($value) {} // value ignored
+				$changes[$name] = $name;
+			}
+			return $changes;
+		} else if($getValues) {
+			return $this->changes;
+		} else {
+			return array_keys($this->changes);
+		}
 	}
 
 	
@@ -1463,8 +1476,9 @@ abstract class Wire implements WireTranslatable, WireFuelable, WireTrackable {
 	 * 
 	 * @param string $str Text to log, or omit to return the `$log` API variable.
 	 * @param array $options Optional extras to include: 
-	 * 	- `url` (string): URL to record the with the log entry (default=auto-detect)
-	 * 	- `name` (string): Name of log to use (default=auto-detect)
+	 *  - `url` (string): URL to record the with the log entry (default=auto-detect)
+	 *  - `name` (string): Name of log to use (default=auto-detect)
+	 *  - `user` (User|string|null): User instance, user name, or null to log for current User. (default=null)
 	 * @return WireLog
 	 *
 	 */

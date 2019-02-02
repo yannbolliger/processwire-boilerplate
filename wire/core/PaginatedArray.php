@@ -15,6 +15,8 @@
  *
  * ProcessWire 3.x, Copyright 2016 by Ryan Cramer
  * https://processwire.com
+ * 
+ * @method string renderPager(array $options = array()) Renders pagination, when MarkupPageArray module installed
  *
  */
 
@@ -137,6 +139,45 @@ class PaginatedArray extends WireArray implements WirePaginatable {
 	}
 
 	/**
+	 * Does this WireArray have more than one pagination?
+	 * 
+	 * #pw-group-other
+	 * 
+	 * @return bool
+	 * @since 3.0.120
+	 * 
+	 */
+	public function hasPagination() {
+		return $this->getTotal() > 0 && $this->count() < $this->getTotal();
+	}
+
+	/**
+	 * Is there a next pagination containing more items in this PaginatedArray after the current one?
+	 * 
+	 * #pw-group-other
+	 * 
+	 * @return int
+	 * @since 3.0.120
+	 * 
+	 */
+	public function hasNextPagination() {
+		return $this->getStart() + $this->count() < $this->getTotal();
+	}
+
+	/**
+	 * Is there a previous pagination before the current one?
+	 * 
+	 * #pw-group-other
+	 * 
+	 * @return bool
+	 * @since 3.0.120
+	 * 
+	 */
+	public function hasPrevPagination() {
+		return $this->getStart() > 0;
+	}
+
+	/**
 	 * Get a property of the PageArray
 	 *
 	 * These map to functions from the array and are here for convenience.
@@ -175,35 +216,62 @@ class PaginatedArray extends WireArray implements WirePaginatable {
 	 * 
 	 * This returns a string of `1 to 10 of 30` (items) or `1 of 10` (pages) for example.
 	 * 
+	 * You can optionally replace either of the arguments with an $options array instead. 
+	 * See the third example below for all options you can specify. (since 3.0.108)
+	 * 
 	 * ~~~~~
 	 * // Get string like "Items 1 to 25 of 500"
 	 * echo $items->getPaginationString('Items');
 	 * 
 	 * // Get string like "Page 1 of 10"
 	 * echo $items->getPaginationString('Page', true);
+	 * 
+	 * // Get string where you specify all options
+	 * echo $items->getPaginationString(array(
+	 *   'label' => 'Items',
+	 *   'usePageNum' => false,
+	 *   'count' => 10, 
+	 *   'start' => 0, 
+	 *   'limit' => 10, 
+	 *   'total' => 100
+	 * ));
 	 * ~~~~~
 	 * 
 	 * #pw-group-other
 	 * 
-	 * @param string $label Label to identify item type, i.e. "Items" or "Page", etc. (default=empty).
-	 * @param bool $usePageNum Specify true to show page numbers rather than item numbers (default=false). 
-	 *   Omit to use the default item numbers. 
+	 * @param string|array $label Label to identify item type, i.e. "Items" or "Page", etc. (default=empty).
+	 * @param bool|array $usePageNum Specify true to show page numbers rather than item numbers (default=false). 
 	 * @return string Formatted string
 	 * 
 	 */
 	public function getPaginationString($label = '', $usePageNum = false) {
 		
-		$count = $this->count();
-		$start = $this->getStart();
-		$limit = $this->getLimit();
-		$total = $this->getTotal();
+		$options = array(
+			'label' => is_string($label) ? $label : '',
+			'usePageNum' => is_bool($usePageNum) ? $usePageNum : false,
+			'count' => -1,
+			'start' => -1,
+			'limit' => -1, 
+			'total' => -1
+		);
+		
+		if(is_array($label)) $options = array_merge($options, $label);
+		if(is_array($usePageNum)) $options = array_merge($options, $usePageNum);
+		
+		$label = $options['label'];
+		$usePageNum = $options['usePageNum'];
+		
+		$count = $options['count'] > -1 ? $options['count'] : $this->count();
+		$start = $options['start'] > -1 ? $options['start'] : $this->getStart();
+		$limit = $options['limit'] > -1 ? $options['limit'] : $this->getLimit();
+		$total = $options['total'] > -1 ? $options['total'] : $this->getTotal();
 		
 		if($usePageNum) {
 			
 			$pageNum = $start ? ($start / $limit) + 1 : 1;
 			$totalPages = ceil($total / $limit); 
 			if(!$totalPages) $pageNum = 0;
-			$str = sprintf($this->_('%1$s %1$d of %2$d'), $label, $pageNum, $totalPages); // Page quantity, i.e. Page 1 of 3
+			$str = sprintf($this->_('%1$s %2$d of %3$d'), $label, $pageNum, $totalPages); // Page quantity, i.e. Page 1 of 3
 			
 		} else {
 

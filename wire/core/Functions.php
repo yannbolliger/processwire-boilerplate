@@ -501,7 +501,7 @@ function wireRenderFile($filename, array $vars = array(), array $options = array
  * - It will assume a ".php" extension if filename has no extension.
  * 
  * Note this function produced direct output. To retrieve output as a return value, use the 
- * wireTemplateFile function instead. 
+ * `wireRenderFile()` function instead. 
  * 
  * @param $filename
  * @param array $vars Optional variables you want to hand to the include (associative array)
@@ -627,14 +627,96 @@ function wireIconMarkupFile($filename, $class = '') {
 /**
  * Given a quantity of bytes, return a more readable size string
  * 
- * @param int $size
+ * @param int $bytes Quantity in bytes
+ * @param bool|int|array $small Make returned string as small as possible (default=false), 
+ *   …or specify integer 1 for $small option but with space between number and unit label.
+ *   …or optionally specify $options argument here. 
+ * @param array|int $options Options to modify default behavior, or if an integer then `decimals` option is assumed:
+ *  - `decimals` (int): Number of decimals to use in returned value (default=0).
+ *  - `decimal_point` (string|null): Decimal point character, or null to detect from locale (default=null). 
+ *  - `thousands_sep` (string|null): Thousands separator, or null to detect from locale (default=null). 
+ *  - `small` (bool): If no $small argument was specified, you can optionally specify it in this $options array.
  * @return string
  * 
  */
-function wireBytesStr($size) {
-	if($size < 1024) return number_format($size) . ' ' . __('bytes', __FILE__);
-	$kb = round($size / 1024);
-	return number_format($kb) . " " . __('kB', __FILE__); // kilobytes
+function wireBytesStr($bytes, $small = false, $options = array()) {
+	
+	$defaults = array(
+		'decimals' => 0, 
+		'decimal_point' => null,
+		'thousands_sep' => null,
+	);
+
+	if(is_array($small)) {
+		$options = $small;
+		$small = isset($options['small']) ? $options['small'] : false;
+	}
+	if(!is_array($options)) $options = array('decimals' => (int) $options);
+	if(!is_int($bytes)) $bytes = (int) $bytes;
+	
+	$options = array_merge($defaults, $options);
+	$locale = array();
+	
+	// determine size value and units label	
+	if($bytes < 1024) {
+		$val = $bytes;
+		if($small) {
+			$label = $val > 0 ? __('B', __FILE__) : ''; // bytes
+		} else {
+			$label = __('bytes', __FILE__);
+		}
+	} else if($bytes < 1000000) {
+		$val = $bytes / 1024;
+		$label = __('kB', __FILE__); // kilobytes
+	} else if($bytes < 1073741824) {
+		$val = $bytes / 1024 / 1024;
+		$label = __('MB', __FILE__); // megabytes
+	} else { 
+		$val = $bytes / 1024 / 1024 / 1024; 
+		$label = __('GB', __FILE__); // gigabytes
+	}
+
+	// determine decimal point if not specified in $options
+	if($options['decimal_point'] === null) {
+		if($options['decimals'] > 0) {
+			// determine decimal point from locale
+			if(empty($locale)) $locale = localeconv();
+			$options['decimal_point'] = empty($locale['decimal_point']) ? '.' : $locale['decimal_point'];
+		} else {
+			// no decimal point needed (not used)
+			$options['decimal_point'] = '.';
+		}
+	}
+
+	// determine thousands separator if not specified in $options
+	if($options['thousands_sep'] === null) {
+		if($small || $val < 1000) {
+			// no thousands separator needed
+			$options['thousands_sep'] = '';
+		} else {
+			// get thousands separator from current locale
+			if(empty($locale)) $locale = localeconv();
+			$options['thousands_sep'] = empty($locale['thousands_sep']) ? '' : $locale['thousands_sep'];
+		}
+	}
+
+	// format number to string
+	$str = number_format($val, $options['decimals'], $options['decimal_point'], $options['thousands_sep']);
+
+	// in small mode remove numbers with decimals that consist only of zeros "0"
+	if($small && $options['decimals'] > 0) {
+		$test = substr($str, -1 * $options['decimals']);
+		if(((int) $test) === 0) {
+			$str = substr($str, 0, strlen($str) - ($options['decimals'] + 1)); // i.e. 123.00 => 123
+		} else {
+			$str = rtrim($str, '0'); // i.e. 123.10 => 123.1
+		}
+	}
+
+	// append units label to number
+	$str .= ($small === true ? '' : ' ') . $label;
+	
+	return $str;
 }
 
 /**
@@ -759,6 +841,82 @@ function wireClassParents($className, $autoload = true) {
 }
 
 /**
+ * Does given instance (or class) represent an instance of the given className (or class names)?
+ * 
+ * Since version 3.0.108 the $className argument may also represent an interface, 
+ * array of interfaces, or mixed array of interfaces and class names. Previous versions did
+ * not support interfaces unless the $instance argument was an object.
+ * 
+ * @param object|string $instance Object instance to test (or string of its class name).
+ * @param string|array $className Class/interface name or array of class/interface names to test against. 
+ * @param bool $autoload
+ * @return bool|string Returns one of the following:
+ *  - boolean false if not an instance (whether $className argument is string or array). 
+ *  - boolean true if given a single $className (string) and $instance is an instance of it. 
+ *  - string of first matching class/interface name if $className was an array of classes to test.
+ * 
+ */
+function wireInstanceOf($instance, $className, $autoload = true) {
+	
+	if(is_array($className)) {
+		$returnClass = true; 
+		$classNames = $className;
+	} else {
+		$returnClass = false;
+		$classNames = array($className);
+	}
+
+	$matchClass = null;
+	$instanceIsObject = is_object($instance);
+	$instanceParents = null;
+	$instanceInterfaces = null;
+	$instanceClass = null;
+	
+	if($instanceIsObject) {
+		// instance is an object
+	} else if(is_string($instance)) {
+		// instance is a class name, make sure it has namespace
+		$instanceClass = wireClassName($instance, true);
+		if($instanceClass === null) $instanceClass = $instance; // if above failed
+		$instance = $instanceClass;
+	} else {
+		// unrecognized instance value
+		return false;
+	}
+
+	foreach($classNames as $className) {
+		$className = wireClassName($className, true); // with namespace
+		if($instanceIsObject && (class_exists($className, $autoload) || interface_exists($className, $autoload))) {
+			if($instance instanceof $className) {
+				$matchClass = $className;
+			}
+		} else {
+			if($instanceClass === null) {
+				$instanceClass = wireClassName($instance, true);
+				if($instanceClass === null) break;
+			}
+			if($instanceParents === null) {
+				$instanceParents = wireClassParents($instance, $autoload);
+				$instanceParents[$instanceClass] = 1;
+			}
+			if(isset($instanceParents[$className])) {
+				$matchClass = $className;
+			} else {
+				if($instanceInterfaces === null) {
+					$instanceInterfaces = wireClassImplements($instance, $autoload);
+				}
+				if(isset($instanceInterfaces[$className])) {
+					$matchClass = $className;
+				}
+			}
+		}
+		if($matchClass !== null) break;
+	}
+	
+	return $returnClass ? $matchClass : ($matchClass !== null); 
+}
+
+/**
  * ProcessWire namespace aware version of PHP's is_callable() function
  *
  * @param string|callable $var
@@ -770,6 +928,25 @@ function wireClassParents($className, $autoload = true) {
 function wireIsCallable($var, $syntaxOnly = false, &$callableName = '') {
 	if(is_string($var)) $var = wireClassName($var, true);
 	return is_callable($var, $syntaxOnly, $callableName);
+}
+
+/**
+ * Return the count of item(s) present in the given value
+ * 
+ * Duplicates behavior of PHP count() function prior to PHP 7.2, which states:
+ * Returns the number of elements in $value. When the parameter is neither an array nor an 
+ * object with implemented Countable interface, 1 will be returned. There is one exception, 
+ * if $value is NULL, 0 will be returned.
+ * 
+ * @param mixed $value
+ * @return int
+ * 
+ */
+function wireCount($value) {
+	if($value === null) return 0; 
+	if(is_array($value)) return count($value); 
+	if(is_object($value) && $value instanceof \Countable) return count($value);
+	return 1;
 }
 
 /**
@@ -853,4 +1030,27 @@ function wireRegion($key, $value = null) {
 
 	return $result;
 }
+
+/**
+ * Create new WireArray, add given $items to it, and return it
+ * 
+ * @param array|WireArray $items
+ * @return WireArray
+ * 
+ */
+function WireArray($items = array()) {
+	return WireArray::newInstance($items);
+}
+
+/**
+ * Create new PageArray, add given $items (pages) to it, and return it
+ *
+ * @param array|PageArray $items
+ * @return WireArray
+ *
+ */
+function PageArray($items = array()) {
+	return PageArray::newInstance($items);
+}
+
 

@@ -27,7 +27,15 @@
  *
  */
 
-class User extends Page { 
+class User extends Page {
+
+	/**
+	 * Cached value for $user->isSuperuser() checks
+	 * 
+	 * @var null|bool
+	 * 
+	 */
+	protected $isSuperuser = null;
 
 	/**
 	 * Create a new User page in memory. 
@@ -52,7 +60,7 @@ class User extends Page {
 	 * }
 	 * ~~~~~
 	 *
-	 * @param string|Role|int May be Role name, object or ID. 
+	 * @param string|Role|int $role May be Role name, object or ID. 
 	 * @return bool
 	 *
 	 */
@@ -99,7 +107,7 @@ class User extends Page {
 	 * $user->save();
 	 * ~~~~~
 	 *
-	 * @param string|int|Role Maybe Role name, object, or ID. 
+	 * @param string|int|Role $role May be Role name, object, or ID. 
 	 * @return bool Returns false if role not recognized, true otherwise
 	 *
 	 */
@@ -123,7 +131,7 @@ class User extends Page {
 	 * $user->save();
 	 * ~~~~~
 	 *
-	 * @param string|int|Role May be Role name, object or ID. 
+	 * @param string|int|Role $role May be Role name, object or ID. 
 	 * @return bool false if role not recognized, true otherwise
 	 *
 	 */
@@ -152,27 +160,35 @@ class User extends Page {
 	 * ~~~~~
 	 * 
 	 * @param string|Permission $name Permission name, object or id. 
-	 * @param Page|Template $context Page or Template
-	 * @return bool
+	 * @param Page|Template|bool|string $context Page or Template... 
+	 *  - or specify boolean true to return if user has permission OR if it was added at any template
+	 *  - or specify string "templates" to return array of Template objects where user has permission
+	 * @return bool|array
 	 *
 	 */
 	public function hasPermission($name, $context = null) {
 		// This method serves as the public interface to the hasPagePermission and hasTemplatePermission methods.
 		
-		if(is_null($context) || $context instanceof Page) {
-			if($this->wire('hooks')->isHooked('hasPagePermission()')) {
-				return $this->hasPagePermission($name, $context);
-			} else {
-				return $this->___hasPagePermission($name, $context);
-			}
-		}
+		if($context === null || $context instanceof Page) {
+			$hook = $this->wire('hooks')->isHooked('hasPagePermission()');
+			return $hook ? $this->hasPagePermission($name, $context) : $this->___hasPagePermission($name, $context);
+		} 
+		
+		$hook = $this->wire('hooks')->isHooked('hasTemplatePermission()');
 		
 		if($context instanceof Template) {
-			if($this->wire('hooks')->isHooked('hasTemplatePermission()')) {
-				return $this->hasTemplatePermission($name, $context); 
-			} else {
-				return $this->___hasTemplatePermission($name, $context);
+			return $hook ? $this->hasTemplatePermission($name, $context) : $this->___hasTemplatePermission($name, $context);
+		}
+		
+		if($context === true || $context === 'templates') {
+			$addedTemplates = array();
+			foreach($this->wire('templates') as $t) {
+				if(!$t->useRoles) continue;
+				$has = $hook ? $this->hasTemplatePermission($name, $t) : $this->___hasTemplatePermission($name, $t);
+				if($has) $addedTemplates[] = $t;
+				if($has && $context === true) break; // we only need to know if there is at least one, so break now
 			}
+			return $context === true ? count($addedTemplates) > 0 : $addedTemplates;	
 		}
 		
 		return false;
@@ -225,7 +241,7 @@ class User extends Page {
 
 		if(!$permission || !$permission->id) return false;
 
-		$roles = $this->get('roles'); 
+		$roles = $this->getUnformatted('roles'); 
 		if(empty($roles) || !$roles instanceof PageArray) return false; 
 		$has = false; 
 		$accessTemplate = is_null($page) ? false : $page->getAccessTemplate($permission->name);
@@ -282,8 +298,7 @@ class User extends Page {
 	 */
 	protected function ___hasTemplatePermission($name, $template) {
 		
-		if($name instanceof Template) $name = $name->name; 
-		if(is_object($name)) throw new WireException("Invalid type"); 
+		if(is_object($name)) $name = $name->name; 
 
 		if($this->isSuperuser()) return true; 
 
@@ -383,17 +398,23 @@ class User extends Page {
 	 *
 	 */
 	public function isSuperuser() {
+		if(is_bool($this->isSuperuser)) return $this->isSuperuser;
 		$config = $this->wire('config');
-		if($this->id === $config->superUserPageID) return true; 
-		if($this->id === $config->guestUserPageID) return false;
-		$superuserRoleID = (int) $config->superUserRolePageID; 
-		$roles = $this->get('roles');
-		if(empty($roles)) return false;
-		$is = false;
-		foreach($roles as $role) if(((int) $role->id) === $superuserRoleID) {
+		if($this->id === $config->superUserPageID) {
 			$is = true;
-			break;
+		} else if($this->id === $config->guestUserPageID) {
+			$is = false;
+		} else {
+			$superuserRoleID = (int) $config->superUserRolePageID;
+			$roles = $this->getUnformatted('roles');
+			if(empty($roles)) return false; // no cache intentional
+			$is = false;
+			foreach($roles as $role) if(((int) $role->id) === $superuserRoleID) {
+				$is = true;
+				break;
+			}
 		}
+		$this->isSuperuser = $is;
 		return $is;
 	}
 
@@ -476,6 +497,19 @@ class User extends Page {
 	 */
 	public function getPagesManager() {
 		return $this->wire('users');
+	}
+
+	/**
+	 * Hook called when field has changed
+	 * 
+	 * @param string $what
+	 * @param mixed $old
+	 * @param mixed $new
+	 * 
+	 */
+	public function ___changed($what, $old = null, $new = null) {
+		if($what == 'roles' && is_bool($this->isSuperuser)) $this->isSuperuser = null;
+		parent::___changed($what, $old, $new); 
 	}
 
 }

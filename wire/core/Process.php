@@ -23,14 +23,15 @@
  * @method Process headline(string $headline)
  * @method Process browserTitle(string $title)
  * @method Process breadcrumb(string $href, string $label)
- * @method install()
- * @method uninstall()
- * @method upgrade($fromVersion, $toVersion)
+ * @method void install()
+ * @method void uninstall()
+ * @method void upgrade($fromVersion, $toVersion)
  * @method Page installPage($name = '', $parent = null, $title = '', $template = 'admin', $extras = array()) #pw-internal
  * @method int uninstallPage() #pw-internal
  * @method string executeNavJSON(array $options = array()) #pw-internal @todo
- * @method ready()
- * @method setConfigData(array $data)
+ * @method void ready()
+ * @method void setConfigData(array $data)
+ * @method void executed($methodName) Hook called after a method has been executed in the Process
  *
  */
 
@@ -125,7 +126,8 @@ abstract class Process extends WireData implements Module {
 	 * 
 	 * When any execute() method returns a string, it us used as the actual output. 
 	 * When the method returns an associative array, it is considered an array of variables
-	 * to send to the output view layer.
+	 * to send to the output view layer. Returned array must not be empty, otherwise it cannot
+	 * be identified as an associative array. 
 	 * 
 	 * This execute() method is called when no URL segments are present. You may have any 
 	 * number of execute() methods, i.e. `executeFoo()` would be called for the URL `./foo/` 
@@ -134,7 +136,10 @@ abstract class Process extends WireData implements Module {
 	 * @return string|array
 	 *
 	 */
-	public function ___execute() { }
+	public function ___execute() { 
+		return ''; // if returning output directly
+		// return array('name' => 'value'); // if populating a view
+	}
 
 	/**
 	 * Hookable method automatically called after execute() method has finished.
@@ -188,7 +193,7 @@ abstract class Process extends WireData implements Module {
 	 * ~~~~~
 	 * 
 	 * @param string $headline
-	 * @return this
+	 * @return $this
 	 *
 	 */
 	public function ___headline($headline) {
@@ -204,7 +209,7 @@ abstract class Process extends WireData implements Module {
 	 * ~~~~~
 	 *
 	 * @param string $title
-	 * @return this
+	 * @return $this
 	 *
 	 */
 	public function ___browserTitle($title) {
@@ -221,7 +226,7 @@ abstract class Process extends WireData implements Module {
 	 * 
 	 * @param string $href URL of breadcrumb
 	 * @param string $label Label for breadcrumb
-	 * @return this
+	 * @return $this
 	 *
 	 */
 	public function ___breadcrumb($href, $label) {
@@ -299,8 +304,8 @@ abstract class Process extends WireData implements Module {
 	 * 
 	 * #pw-group-module-interface
 	 * 
-	 * @param $fromVersion Previous version
-	 * @param $toVersion New version
+	 * @param int|string $fromVersion Previous version
+	 * @param int|string $toVersion New version
 	 * @throws WireException if upgrade fails
 	 * 
 	 */
@@ -493,10 +498,15 @@ abstract class Process extends WireData implements Module {
 	 * 
 	 */
 	public function setViewFile($file) {
-		$path = $this->wire('config')->paths . $this->className(); 
-		if(strpos($file, $path) !== 0) $file = $path . ltrim($file, '/');
-		if(strpos($file, '..') !== false) throw new WireException("Invalid view file"); 
-		if(!is_file($file)) throw new WireException("View file $file does not exist"); 
+		if(strpos($file, '..') !== false) throw new WireException("Invalid view file (relative paths not allowed)"); 
+		$config = $this->wire('config');
+		if(strpos($file, $config->paths->root) === 0 && is_file($file)) {
+			// full path filename already specified, nothing to auto-determine
+		} else {
+			$path = $config->paths($this->className());
+			if($path && strpos($file, $path) !== 0) $file = $path . ltrim($file, '/\\');
+			if(!is_file($file)) throw new WireException("View file '$file' does not exist");
+		}
 		$this->_viewFile = $file;
 		return $this;	
 	}
@@ -548,5 +558,20 @@ abstract class Process extends WireData implements Module {
 	 */
 	public function getViewVars() {
 		return $this->_viewVars; 
+	}
+
+	/**
+	 * Return the Page that this process lives on 
+	 * 
+	 * @return Page|NullPage
+	 * 
+	 */
+	public function getProcessPage() {
+		$page = $this->wire('page'); 
+		if($page->process === $this) return $page;
+		$moduleID = $this->wire('modules')->getModuleID($this);
+		if(!$moduleID) return new NullPage();
+		$page = $this->wire('pages')->get("process=$moduleID, include=all"); 
+		return $page;
 	}
 }

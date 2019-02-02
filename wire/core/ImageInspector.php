@@ -135,7 +135,7 @@ class ImageInspector extends WireData {
 		if(is_array($additionalInfo) && $parseAppmarker) {
 			$appmarker = array();
 			foreach($additionalInfo as $k => $v) {
-				$appmarker[$k] = substr($v, 0, strpos($v, null));
+				$appmarker[$k] = substr($v, 0, strpos($v, chr(null)));
 			}
 			$this->info['appmarker'] = $appmarker;
 			if(isset($additionalInfo['APP13'])) {
@@ -232,7 +232,7 @@ class ImageInspector extends WireData {
 		$i['trans']         = isset($gi->m_bTrans) ? $gi->m_bTrans : false;
 		$i['transcolor']    = isset($gi->m_nTrans) ? $gi->m_nTrans : '';
 		$i['bgcolor']		= $gfh->m_nBgColor;
-		$i['numcolors']		= $gfh->m_colorTable->m_nColors;
+		$i['numcolors']		= isset($gfh->m_colorTable->m_nColors) ? $gfh->m_colorTable->m_nColors : 0;
 		$i['interlace']		= $gih->m_bInterlace;
 		$this->info = $i;
 		unset($gif, $gih, $gfh, $gi, $i);

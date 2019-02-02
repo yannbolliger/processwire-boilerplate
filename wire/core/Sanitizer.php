@@ -64,6 +64,70 @@ class Sanitizer extends Wire {
 	protected $allowedASCII = array();
 
 	/**
+	 * @var null|WireTextTools
+	 * 
+	 */
+	protected $textTools = null;
+
+	/**
+	 * UTF-8 whitespace hex codes
+	 * 
+	 * @var array
+	 * 
+	 */
+	protected $whitespaceUTF8 = array(
+		'0009', // character tab
+		'000A', // line feed
+		'000B', // line tab
+		'000C', // form feed
+		'000D', // carriage return
+		'0020', // space
+		'0085', // next line
+		'00A0', // non-breaking space
+		'1680', // ogham space mark
+		'180E', // mongolian vowel separator
+		'2000', // en quad
+		'2001', // em quad
+		'2002', // en space
+		'2003', // em space
+		'2004', // three per em space
+		'2005', // four per em space
+		'2006', // six per em space
+		'2007', // figure space
+		'2008', // punctuation space
+		'2009', // thin space
+		'200A', // hair space
+		'200B', // zero width space
+		'200C', // zero width non-join
+		'200D', // zero width join
+		'2028', // line seperator
+		'2029', // paragraph seperator
+		'202F', // narrow non-breaking space
+		'205F', // medium mathematical space   
+		'2060', // word join
+		'3000', // ideographic space
+		'FEFF', // zero width non-breaking space
+	);
+
+	/**
+	 * HTML entities representing whitespace
+	 * 
+	 * Note that this array is populated with all decimal/hex entities after a call to 
+	 * getWhitespaceArray() method with the $html option as true. 
+	 * 
+	 * @var array
+	 * 
+	 */
+	protected $whitespaceHTML = array(
+		'&nbsp;', // non-breaking space
+		'&ensp;', // en space
+		'&emsp;', // em space
+		'&thinsp;', // thin space
+		'&zwnj;', // zero width non-join
+		'&zwj;', // zero width join
+	);
+
+	/**
 	 * Construct the sanitizer
 	 *
 	 */
@@ -116,8 +180,10 @@ class Sanitizer extends Wire {
 				}
 			}
 
-			$v = iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", $value);
-			if($v) $value = $v;
+			if(function_exists("\\iconv")) {
+				$v = iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", $value);
+				if($v) $value = $v;
+			}
 			$needsWork = strlen(str_replace($allowed, '', $value)); 
 		}
 
@@ -447,15 +513,16 @@ class Sanitizer extends Wire {
 	 * #pw-group-pages
 	 * 
 	 * @param string $value Value to sanitize
+	 * @param int $maxLength Maximum number of characters allowed
 	 * @return string Sanitized value
 	 *
 	 */
-	public function pageNameUTF8($value) {
+	public function pageNameUTF8($value, $maxLength = 128) {
 		
 		if(!strlen($value)) return '';
 		
 		// if UTF8 module is not enabled then delegate this call to regular pageName sanitizer
-		if($this->wire('config')->pageNameCharset != 'UTF8') return $this->pageName($value);
+		if($this->wire('config')->pageNameCharset != 'UTF8') return $this->pageName($value, false, $maxLength);
 	
 		// we don't allow UTF8 page names to be prefixed with "xn-"
 		if(strpos($value, 'xn-') === 0) $value = substr($value, 3);
@@ -467,7 +534,7 @@ class Sanitizer extends Wire {
 		$extras = array('.', '-', '_', ' ', ',', ';', ':', '(', ')', '!', '?', '&', '%', '$', '#', '@');
 
 		// proceed only if value has some non-ascii characters
-		if(ctype_alnum(str_replace($extras, '', $value))) return $this->pageName($value);
+		if(ctype_alnum(str_replace($extras, '', $value))) return $this->pageName($value, false, $maxLength);
 
 		// validate that all characters are in our whitelist
 		$whitelist = $this->wire('config')->pageNameWhitelist;
@@ -513,6 +580,8 @@ class Sanitizer extends Wire {
 		// trim off any remaining separators/extras
 		$value = trim($value, '-_.');
 		
+		if(mb_strlen($value) > $maxLength) $value = mb_substr($value, 0, $maxLength); 
+		
 		return $value;
 	}
 
@@ -542,7 +611,7 @@ class Sanitizer extends Wire {
 		if(strpos($value, 'xn--') !== 0) $value = 'xn--' . substr($value, 3);
 		if(function_exists('idn_to_utf8')) {
 			// use native php function if available
-			$value = idn_to_utf8($value);
+			$value = @idn_to_utf8($value);
 		} else {
 			// otherwise use Punycode class
 			$pc = new Punycode();
@@ -585,7 +654,7 @@ class Sanitizer extends Wire {
 		
 		if(function_exists("idn_to_ascii")) {
 			// use native php function if available
-			$value = substr(idn_to_ascii($value), 3);
+			$value = substr(@idn_to_ascii($value), 3);
 		} else {
 			// otherwise use Punycode class
 			$pc = new Punycode();
@@ -918,10 +987,16 @@ class Sanitizer extends Wire {
 	 * - `maxLength` (int): maximum characters allowed, or 0=no max (default=255).
 	 * - `maxBytes` (int): maximum bytes allowed (default=0, which implies maxLength*4).
 	 * - `stripTags` (bool): strip markup tags? (default=true).
-	 * - `stripMB4` (bool): strip emoji and other 4-byte UTF-8? (default=false). 
+	 * - `stripMB4` (bool): strip emoji and other 4-byte UTF-8? (default=false).
+	 * - `stripQuotes` (bool): strip out any "quote" or 'quote' characters? Specify true, or character to replace with. (default=false)
+	 * - `stripSpace` (bool|string): strip whitespace? Specify true or character to replace whitespace with (default=false). Since 3.0.105
+	 * - `reduceSpace` (bool|string): reduce consecutive whitespace to single? Specify true or character to reduce to (default=false). 
+	 *    Note that the reduceSpace option is an alternative to the stripSpace option, they should not be used together. Since 3.0.105
 	 * - `allowableTags` (string): markup tags that are allowed, if stripTags is true (use same format as for PHP's `strip_tags()` function.
 	 * - `multiLine` (bool): allow multiple lines? if false, then $newlineReplacement below is applicable (default=false).
-	 * - `newlineReplacement` (string): character to replace newlines with, OR specify boolean TRUE to remove extra lines (default=" ").
+	 * - `convertEntities` (bool): convert HTML entities to equivalent character(s)? (default=false). Since 3.0.105
+	 * - `newlineReplacement` (string): character to replace newlines with, OR specify boolean true to remove extra lines (default=" ").
+	 * - `truncateTail` (bool): if truncate necessary for maxLength, truncate from end/tail? Use false to truncate head (default=true). Since 3.0.105
 	 * - `inCharset` (string): input character set (default="UTF-8").
 	 * - `outCharset` (string): output character set (default="UTF-8").
 	 * @return string
@@ -935,14 +1010,41 @@ class Sanitizer extends Wire {
 			'maxBytes' => 0,  // maximum bytes allowed (0 = default, which is maxLength*4)
 			'stripTags' => true, // strip markup tags
 			'stripMB4' => false, // strip Emoji and 4-byte characters? 
+			'stripQuotes' => false, // strip quote characters? Specify true, or character to replace them with
+			'stripSpace' => false, // remove/replace whitespace? If yes, specify character to replace with, or true for blank
+			'reduceSpace' => false, // reduce whitespace to single? If yes, specify character to replace with or true for ' '.
 			'allowableTags' => '', // tags that are allowed, if stripTags is true (use same format as for PHP's strip_tags function)
 			'multiLine' => false, // allow multiple lines? if false, then $newlineReplacement below is applicable
+			'convertEntities' => false, // convert HTML entities to equivalent characters?
 			'newlineReplacement' => ' ', // character to replace newlines with, OR specify boolean TRUE to remove extra lines
 			'inCharset' => 'UTF-8', // input charset
 			'outCharset' => 'UTF-8',  // output charset
+			'truncateTail' => true, // if truncate necessary for maxLength, remove chars from tail? False to truncate from head.
+			'trim' => true, // trim whitespace from beginning/end, or specify character(s) to trim, or false to disable
 			);
-
-		$options = array_merge($defaultOptions, $options); 
+		
+		static $alwaysReplace = null;
+		$truncated = false;
+		$options = array_merge($defaultOptions, $options);
+		if(isset($options['multiline'])) $options['multiLine'] = $options['multiline']; // common case error
+		if(isset($options['maxlength'])) $options['maxLength'] = $options['maxlength']; // common case error
+		if($options['maxLength'] < 0) $options['maxLength'] = 0;
+		if($options['maxBytes'] < 0) $options['maxBytes'] = 0;
+		
+		if($alwaysReplace === null) {
+			if($this->multibyteSupport) {
+				$alwaysReplace = array(
+					mb_convert_encoding('&#8232;', 'UTF-8', 'HTML-ENTITIES') => '', // line-seperator that is sometimes copy/pasted
+				);
+			} else {
+				$alwaysReplace = array();
+			}
+		}
+		
+		if($options['reduceSpace'] !== false && $options['stripSpace'] === false) {
+			// if reduceSpace option is used then provide necessary value for stripSpace option
+			$options['stripSpace'] = is_string($options['reduceSpace']) ? $options['reduceSpace'] : ' ';
+		}
 		
 		if(!is_string($value)) $value = $this->string($value);
 
@@ -962,21 +1064,60 @@ class Sanitizer extends Wire {
 			}
 		}
 
-		if($options['stripTags']) $value = strip_tags($value, $options['allowableTags']); 
+		if($options['stripTags']) {
+			$value = strip_tags($value, $options['allowableTags']);
+		}
 
-		if($options['inCharset'] != $options['outCharset']) $value = iconv($options['inCharset'], $options['outCharset'], $value);
+		if($options['inCharset'] != $options['outCharset']) {
+			$value = iconv($options['inCharset'], $options['outCharset'], $value);
+		}
 		
-		if($options['stripMB4']) $value = $this->removeMB4($value);
+		if($options['convertEntities']) {
+			$value = $this->unentities($value, true, $options['outCharset']); 
+		}
+		
+		foreach($alwaysReplace as $find => $replace) {
+			if(strpos($value, $find) === false) continue;
+			$value = str_replace($find, $replace, $value);
+		}
 
+		if($options['stripSpace'] !== false) {
+			$c = is_string($options['stripSpace']) ? $options['stripSpace'] : '';
+			$allow = $options['multiLine'] ? array("\n") : array();
+			$value = $this->removeWhitespace($value, array('replace' => $c, 'allow' => $allow));
+		}
+
+		if($options['stripMB4']) {
+			$value = $this->removeMB4($value);
+		}
+		
+		if($options['stripQuotes']) {
+			$value = str_replace(array('"', "'"), (is_string($options['stripQuotes']) ? $options['strip_quotes'] : ''), $value);
+		}
+		
+		if($options['trim']) {
+			$value = is_string($options['trim']) ? trim($value, $options['trim']) : trim($value);
+		}
+		
 		if($options['maxLength']) {
 			if(empty($options['maxBytes'])) $options['maxBytes'] = $options['maxLength'] * 4;
 			if($this->multibyteSupport) {
 				if(mb_strlen($value, $options['outCharset']) > $options['maxLength']) {
-					$value = mb_substr($value, 0, $options['maxLength'], $options['outCharset']);
+					$truncated = true;
+					if($options['truncateTail']) {
+						$value = mb_substr($value, 0, $options['maxLength'], $options['outCharset']);
+					} else {
+						$value = mb_substr($value, -1 * $options['maxLength'], null, $options['outCharset']);
+					}
 				}
 			} else {
 				if(strlen($value) > $options['maxLength']) {
-					$value = substr($value, 0, $options['maxLength']);
+					$truncated = true;
+					if($options['truncateTail']) {
+						$value = substr($value, 0, $options['maxLength']);
+					} else {
+						$value = substr($value, -1 * $options['maxLength']); 
+					}
 				}
 			}
 		}
@@ -984,16 +1125,30 @@ class Sanitizer extends Wire {
 		if($options['maxBytes']) {
 			$n = $options['maxBytes'];
 			while(strlen($value) > $options['maxBytes']) {
+				$truncated = true;
 				$n--;
 				if($this->multibyteSupport) {
-					$value = mb_substr($value, 0, $n, $options['outCharset']);
+					if($options['truncateTail']) {
+						$value = mb_substr($value, 0, $n, $options['outCharset']);
+					} else {
+						$value = mb_substr($value, $n, null, $options['outCharset']); 
+					}
 				} else {
-					$value = substr($value, 0, $n);
+					if($options['truncateTail']) {
+						$value = substr($value, 0, $n);
+					} else {
+						$value = substr($value, $n); 
+					}
 				}
 			}
 		}
+		
+		if($truncated && $options['trim']) {
+			// secondary trim after truncation
+			$value = is_string($options['trim']) ? trim($value, $options['trim']) : trim($value);
+		}
 
-		return trim($value); 	
+		return $value;
 	}
 
 	/**
@@ -1002,7 +1157,7 @@ class Sanitizer extends Wire {
 	 * - This sanitizer is useful for user-submitted text from a plain-text `<textarea>` field, 
 	 *   or any other kind of string value that might have multiple-lines.
 	 * 
-	 * - Don't use this sanitizer for values where you want to allow HTML (like rich text fields). 
+	 * - Don’t use this sanitizer for values where you want to allow HTML (like rich text fields). 
 	 *   For those values you should instead use the `$sanitizer->purify()` method. 
 	 * 
 	 * - If using returned value for front-end output, be sure to run it through `$sanitizer->entities()` first.
@@ -1011,14 +1166,18 @@ class Sanitizer extends Wire {
 	 *
 	 * @param string $value String value to sanitize
 	 * @param array $options Options to modify default behavior
-	 *  - `maxLength` (int): maximum characters allowed, or 0=no max (default=16384 or 16kb).
-	 *  - `maxBytes` (int): maximum bytes allowed (default=0, which implies maxLength*3 or 48kb).
-	 *  - `stripTags` (bool): strip markup tags? (default=true).
-	 *  - `stripMB4` (bool): strip emoji and other 4-byte UTF-8? (default=false). 
-	 *  - `allowableTags` (string): markup tags that are allowed, if stripTags is true (use same format as for PHP's `strip_tags()` function.
-	 *  - `allowCRLF` (bool): allow CR+LF newlines (i.e. "\r\n")? (default=false, which means "\r\n" is replaced with "\n"). 
-	 *  - `inCharset` (string): input character set (default="UTF-8").
-	 *  - `outCharset` (string): output character set (default="UTF-8").
+	 * - `maxLength` (int): maximum characters allowed, or 0=no max (default=16384 or 16kb).
+	 * - `maxBytes` (int): maximum bytes allowed (default=0, which implies maxLength*3 or 48kb).
+	 * - `stripTags` (bool): strip markup tags? (default=true).
+	 * - `stripMB4` (bool): strip emoji and other 4-byte UTF-8? (default=false).
+	 * - `stripIndents` (bool): Remove indents (space/tabs) at the beginning of lines? (default=false). Since 3.0.105
+	 * - `reduceSpace` (bool|string): reduce consecutive whitespace to single? Specify true or character to reduce to (default=false). Since 3.0.105
+	 * - `allowableTags` (string): markup tags that are allowed, if stripTags is true (use same format as for PHP's `strip_tags()` function.
+	 * - `convertEntities` (bool): convert HTML entities to equivalent character(s)? (default=false). Since 3.0.105
+	 * - `truncateTail` (bool): if truncate necessary for maxLength, truncate from end/tail? Use false to truncate head (default=true). Since 3.0.105
+	 * - `allowCRLF` (bool): allow CR+LF newlines (i.e. "\r\n")? (default=false, which means "\r\n" is replaced with "\n"). 
+	 * - `inCharset` (string): input character set (default="UTF-8").
+	 * - `outCharset` (string): output character set (default="UTF-8").
 	 * @return string
 	 * @see Sanitizer::text(), Sanitizer::purify()
 	 * 
@@ -1030,12 +1189,20 @@ class Sanitizer extends Wire {
 
 		if(!isset($options['multiLine'])) $options['multiLine'] = true; 	
 		if(!isset($options['maxLength'])) $options['maxLength'] = 16384; 
-		if(!isset($options['maxBytes'])) $options['maxBytes'] = $options['maxLength'] * 3; 
+		if(!isset($options['maxBytes'])) $options['maxBytes'] = $options['maxLength'] * 4; 
 	
 		// convert \r\n to just \n
-		if(empty($options['allowCRLF']) && strpos($value, "\r\n") !== false) $value = str_replace("\r\n", "\n", $value); 
+		if(empty($options['allowCRLF']) && strpos($value, "\r\n") !== false) {
+			$value = str_replace("\r\n", "\n", $value);
+		}
 
-		return $this->text($value, $options); 
+		$value = $this->text($value, $options); 
+		
+		if(!empty($options['stripIndents'])) {
+			$value = preg_replace('/^[ \t]+/m', '', $value); 
+		}
+		
+		return $value;
 	}
 
 	/**
@@ -1164,6 +1331,8 @@ class Sanitizer extends Wire {
 	 *  - `allowSchemes` (array): Array of allowed schemes, lowercase (default=[] any).
 	 *  - `disallowSchemes` (array): Array of disallowed schemes, lowercase (default=['file']).
 	 *  - `requireScheme` (bool): Specify true to require a scheme in the URL, if one not present, it will be added to non-relative URLs (default=true).
+	 *  - `convertEncoded` (boolean): Convert most encoded hex characters characters (i.e. “%2F”) to non-encoded? (default=true)
+	 *  - `encodeSpace` (boolean): Encoded space to “%20” or allow “%20“ in URL? Only useful if convertEncoded is true. (default=false)
 	 *  - `stripTags` (bool): Specify false to prevent tags from being stripped (default=true).
 	 *  - `stripQuotes` (bool): Specify false to prevent quotes from being stripped (default=true).
 	 *  - `maxLength` (int): Maximum length in bytes allowed for URLs (default=4096).
@@ -1182,6 +1351,8 @@ class Sanitizer extends Wire {
 			'allowSchemes' => array(),
 			'disallowSchemes' => array('file', 'javascript'),
 			'requireScheme' => true,
+			'convertEncoded' => true, 
+			'encodeSpace' => false, 
 			'stripTags' => true,
 			'stripQuotes' => true,
 			'maxLength' => 4096,
@@ -1229,15 +1400,17 @@ class Sanitizer extends Wire {
 			$queryString = '';
 		}
 
-		$pathIsEncoded = strpos($domainPath, '%') !== false;
-		if($pathIsEncoded || filter_var($domainPath, FILTER_SANITIZE_URL) !== $domainPath) {
+		$pathIsEncoded = $options['convertEncoded'] && strpos($domainPath, '%') !== false;
+		$pathModifiedByFilter = filter_var($domainPath, FILTER_SANITIZE_URL) !== $domainPath;
+		
+		if($pathIsEncoded || $pathModifiedByFilter) {
 			// the domain and/or path contains extended characters not supported by FILTER_SANITIZE_URL
 			// Example: https://de.wikipedia.org/wiki/Linkshänder
 			// OR it is already rawurlencode()'d
 			// Example: https://de.wikipedia.org/wiki/Linksh%C3%A4nder
 			// we convert the URL to be FILTER_SANITIZE_URL compatible
 			// if already encoded, first remove encoding: 
-			if(strpos($domainPath, '%') !== false) $domainPath = rawurldecode($domainPath);
+			if($pathIsEncoded) $domainPath = rawurldecode($domainPath);
 			// Next, encode it, for example: https%3A%2F%2Fde.wikipedia.org%2Fwiki%2FLinksh%C3%A4nder
 			$domainPath = rawurlencode($domainPath);
 			// restore characters allowed in domain/path
@@ -1266,7 +1439,8 @@ class Sanitizer extends Wire {
 				if($slashPos === false) $slashPos = $dotPos+1;
 				// if the first slash comes after the first dot, the dot is likely part of a domain.com/path/
 				// if the first slash comes before the first dot, then it's likely a /path/product.html
-				if($dotPos && $slashPos > $dotPos && preg_match('{^([^\s_.]+\.)?[^-_\s.][^\s_.]+\.([a-z]{2,6})([./:#]|$)}i', $value, $matches)) {
+				$regex = '{^([^\s_.]+\.)?[^-_\s.][^\s_.]+\.([a-z]{2,6})([./:#]|$)}i';
+				if($dotPos && $slashPos > $dotPos && preg_match($regex, $value, $matches)) {
 					// most likely a domain name
 					// $tld = $matches[3]; // TODO add TLD validation to confirm it's a domain name
 					$value = $this->filterValidateURL("http://$value", $options); // add scheme for validation
@@ -1310,7 +1484,7 @@ class Sanitizer extends Wire {
 
 		if($pathIsEncoded && strlen($value)) {
 			// restore to non-encoded, UTF-8 version 
-			if(strpos('?', $value) !== false) {
+			if(strpos($value, '?') !== false) {
 				list($domainPath, $queryString) = explode('?', $value);
 			} else {
 				$domainPath = $value;
@@ -1318,6 +1492,7 @@ class Sanitizer extends Wire {
 			}
 			$domainPath = rawurldecode($domainPath);
 			if(strpos($domainPath, '%') !== false) {
+				// if any apparently encoded characters remain afer rawurldecode, remove them
 				$domainPath = preg_replace('/%[0-9ABCDEF]{1,2}/i', '', $domainPath);
 				$domainPath = str_replace('%', '', $domainPath);
 			}
@@ -1325,27 +1500,31 @@ class Sanitizer extends Wire {
 			$value = $domainPath . (strlen($queryString) ? "?$queryString" : "");
 		}
 
-		if(strlen($value)) {
-			if($options['stripTags']) {
-				if(stripos($value, '%3') !== false) {
-					$value = str_ireplace(array('%3C', '%3E'), array('!~!<', '>!~!'), $value);
-					$value = strip_tags($value);
-					$value = str_ireplace(array('!~!<', '>!~!', '!~!'), array('%3C', '%3E', ''), $value); // restore, in case valid/non-tag
-				} else {
-					$value = strip_tags($value);
-				}
+		if(!strlen($value)) return '';
+		
+		if($options['stripTags']) {
+			if(stripos($value, '%3') !== false) {
+				$value = str_ireplace(array('%3C', '%3E'), array('!~!<', '>!~!'), $value); // convert encoded to placeholders to strip
+				$value = strip_tags($value);
+				$value = str_ireplace(array('!~!<', '>!~!', '!~!'), array('%3C', '%3E', ''), $value); // restore, in case valid/non-tag
+			} else {
+				$value = strip_tags($value);
 			}
-			if($options['stripQuotes']) {
-				$value = str_replace(array('"', "'", "%22", "%27"), '', $value);
-			}
-			return $value;
 		}
-
-		return '';
+		
+		if($options['stripQuotes']) {
+			$value = str_replace(array('"', "'", "%22", "%27"), '', $value);
+		}
+		
+		if($options['encodeSpace'] && strpos($value, ' ')) {
+			$value = str_replace(' ', '%20', $value);
+		}
+		
+		return $value;
 	}
 
 	/**
-	 * Implementation of PHP's FILTER_VALIDATE_URL with IDN support (will convert to valid)
+	 * Implementation of PHP's FILTER_VALIDATE_URL with IDN and underscore support (will convert to valid)
 	 *
 	 * Example: http://трикотаж-леко.рф
 	 *
@@ -1355,10 +1534,28 @@ class Sanitizer extends Wire {
 	 *
 	 */
 	protected function filterValidateURL($url, array $options) {
-
+	
+		// placeholders are characters known to be rejected by FILTER_VALIDATE_URL that should not be
+		$placeholders = array();
+		
+		if(strpos($url, '_') !== false && strpos(parse_url($url, PHP_URL_HOST), '_') !== false) {
+			// hostname contains an underscore and FILTER_VALIDATE_URL does not support them in hostnames
+			do {
+				$placeholder = 'UNDER' . mt_rand() . 'SCORE';
+			} while(strpos($url, $placeholder) !== false);
+			$url = str_replace('_', $placeholder, $url);
+			$placeholders[$placeholder] = '_';
+		}
+		
 		$_url = $url;
 		$url = filter_var($url, FILTER_VALIDATE_URL);
-		if($url !== false && strlen($url)) return $url;
+		if($url !== false && strlen($url)) {
+			// if filter_var returns a URL, then we know there is no IDN present and we can exit now
+			if(count($placeholders)) {
+				$url = str_replace(array_keys($placeholders), array_values($placeholders), $url);
+			}
+			return $url;
+		}
 
 		// if allowIDN was specifically set false, don't proceed further
 		if(isset($options['allowIDN']) && !$options['allowIDN']) return $url;
@@ -1399,16 +1596,20 @@ class Sanitizer extends Wire {
 		} else {
 			// domain contains utf8
 			$pc = function_exists("idn_to_ascii") ? false : new Punycode();
-			$domain = $pc ? $pc->encode($domain) : idn_to_ascii($domain);
+			$domain = $pc ? $pc->encode($domain) : @idn_to_ascii($domain);
 			if($domain === false || !strlen($domain)) return '';
 			$url = $scheme . $domain . $rest;
 			$url = filter_var($url, FILTER_VALIDATE_URL);
 			if(strlen($url)) {
 				// convert back to utf8 domain
-				$domain = $pc ? $pc->decode($domain) : idn_to_utf8($domain);
+				$domain = $pc ? $pc->decode($domain) : @idn_to_utf8($domain);
 				if($domain === false) return '';
 				$url = $scheme . $domain . $rest;
 			}
+		}
+		
+		if(count($placeholders)) {
+			$url = str_replace(array_keys($placeholders), array_values($placeholders), $url); 
 		}
 
 		return $url;
@@ -1718,13 +1919,19 @@ class Sanitizer extends Wire {
 	 * 
 	 * Wrapper for PHP's `html_entity_decode()` function that contains typical ProcessWire usage defaults.
 	 *
-	 * The arguments used here are identical to those for PHP's 
+	 * The arguments used here are identical to those for PHP’s (except `$flags` can be boolean true):  
 	 * [html_entity_decode](http://www.php.net/manual/en/function.html-entity-decode.php) function.
+	 * 
+	 * For the `$flags` argument, specify boolean `true` if you want to perform a more comprehensive entity
+	 * decode than what PHP does. That will make it convert all UTF-8 entities (including decimal and hex numbered
+	 * entities), and it will remove any remaining entity sequences if the could not be converted, ensuring there
+	 * are no entities possible in returned value. 
 	 * 
 	 * #pw-group-strings
 	 * 
 	 * @param string $str String to remove entities from
-	 * @param int|bool $flags See PHP html_entity_decode function for flags. 
+	 * @param int|bool $flags See PHP html_entity_decode function for flags, 
+	 *   OR specify boolean true to convert all entities and remove any that cannot be converted (since 3.0.105). 
 	 * @param string $encoding Encoding (default="UTF-8").
 	 * @return string String with entities removed.
 	 * @see Sanitizer::entities()
@@ -1732,7 +1939,23 @@ class Sanitizer extends Wire {
 	 */
 	public function unentities($str, $flags = ENT_QUOTES, $encoding = 'UTF-8') {
 		if(!is_string($str)) $str = $this->string($str);
-		return html_entity_decode($str, $flags, $encoding); 
+		$str = html_entity_decode($str, ($flags === true ? ENT_QUOTES : $flags), $encoding);
+		if($flags !== true || strpos($str, '&') === false) return $str;
+		// flags is true and at least one "&" remains, so we are doing a full entity removal
+		// first, replace common entities that can possibly remain
+		$entities = array('&apos;' => "'");
+		$str = str_ireplace(array_keys($entities), array_values($entities), $str);
+		if(strpos($str, '&#') !== false) {
+			// manually convert decimal and hex entities
+			$str = preg_replace_callback('/(&#[0-9A-F]+;)/i', function($matches) use($encoding) {
+				return mb_convert_encoding($matches[1], $encoding, "HTML-ENTITIES");
+			}, $str);
+		}
+		if(strpos($str, '&') !== false) {
+			// strip out any entities that remain
+			$str = preg_replace('/&(?:#[0-9A-F]|[A-Z]+);/i', ' ', $str);
+		}
+		return $str;
 	}
 
 	/**
@@ -1761,7 +1984,6 @@ class Sanitizer extends Wire {
 	 * @param string $str String to purify
 	 * @param array $options See [config options](http://htmlpurifier.org/live/configdoc/plain.html).
 	 * @return string Purified markup string.
-	 * @throws WireException if given something other than a string
 	 *
 	 */
 	public function purify($str, array $options = array()) {
@@ -1802,8 +2024,241 @@ class Sanitizer extends Wire {
 	 * @return string String without newlines
 	 *
 	 */
-	function removeNewlines($str, $replacement = ' ') {
+	public function removeNewlines($str, $replacement = ' ') {
 		return str_replace(array("\r\n", "\r", "\n"), $replacement, $str);
+	}
+
+	/**
+	 * Remove or replace all whitespace from string
+	 * 
+	 * #pw-group-strings
+	 * 
+	 * @param string $str String to remove whitespace from
+	 * @param array|string $options Options to modify behavior, or specify string for `replace` option:
+	 *  - `replace` (string): Character(s) to replace whitespace with (default='').
+	 *  - `collapse` (bool): If using replace, collapse consecutive replace chars to single? (default=true)
+	 *  - `trim` (bool): If using replace, trim it from beginning and end? (default=true)
+	 *  - `html` (bool): Remove/replace HTML whitespace entities too? (default=true)
+	 *  - `allow` (array): Array of whitespace characters that may remain. (default=[])
+	 * @return string
+	 * @since 3.0.105
+	 * 
+	 */
+	public function removeWhitespace($str, $options = array()) {
+		$defaults = array(
+			'replace' => '',
+			'collapse' => true,
+			'trim' => true,
+			'html' => true,
+			'allow' => array(), 
+		);
+		if(!is_array($options)) {
+			$defaults['replace'] = $options;
+			$options = $defaults;
+		} else {
+			$options = array_merge($defaults, $options);
+		}
+		if($options['html'] && strpos($str, '&') === false) $options['html'] = false;
+		$whitespace = $this->getWhitespaceArray($options['html']); 
+		foreach($options['allow'] as $c) {
+			$key = array_search($c, $whitespace); 
+			if($key !== false) unset($whitespace[$key]);
+		}
+		$rep = $options['replace'];
+		if($options['html']) {
+			$str = str_ireplace($whitespace, $rep, $str);
+		} else {
+			$str = str_replace($whitespace, $rep, $str);
+		}
+		if(strlen($rep)) {
+			if($options['collapse']) {
+				while(strpos($str, "$rep$rep") !== false) {
+					$str = str_replace("$rep$rep", $rep, $str);
+				}
+			}
+			if($options['trim']) {
+				$str = trim($str, $rep);
+				if(count($options['allow'])) $str = trim($str, implode('', $options['allow']));
+			}
+		}
+		return $str;
+	}
+
+	/**
+	 * Reduce whitespace to minimum required to maintain intended separation
+	 *
+	 * This is a variation of the removeWhitespace() function that converts whitespace to be all of the same type
+	 * and collapses all consequitive whitespace to single whitespace.
+	 * 
+	 * If `multiline` option is specified then newlines allowed to remain as-is. 
+	 * 
+	 * #pw-internal
+	 *
+	 * @param string $str
+	 * @param array $options
+	 *  - `replace` (string): Character(s) to replace whitespace with (default=' ' i.e. single space).
+	 *  - `collapse` (bool): Collapse consecutive replace chars to single? (default=true)
+	 *  - `trim` (bool): Trim allowed whitespace beginning and end? (default=true)
+	 *  - `html` (bool): Remove/replace HTML whitespace entities too? (default=false)
+	 *  - `allow` (array): Array of whitespace characters that may remain. (default=[" "])
+	 *  - `multiline` (bool): Allow newlines? This adds "\n" to the allow list. (default=false)
+	 * @return string
+	 * @since 3.0.123
+	 *
+	 */
+	public function reduceWhitespace($str, $options = array()) {
+		$defaults = array(
+			'replace' => ' ',
+			'collapse' => true,
+			'trim' => true,
+			'html' => false,
+			'allow' => array(' '),
+			'multiline' => false,
+		);
+		$options = array_merge($defaults, $options); 
+		return $this->normalizeWhitespace($str, $options);
+	}
+
+	/**
+	 * Normalize whitespace in the string to be all of the same type
+	 * 
+	 * This for instance replaces all UTF-8 whitespace variants, tabs and newlines to a regular ASCII space. 
+	 * If `multiline` option is specified then newlines allowed to remain as-is. 
+	 * 
+	 * This is a variation of the removeWhitespace() function that converts whitespace to be all of the same type
+	 * rather than removing the whitespace. 
+	 * 
+	 * #pw-internal
+	 * 
+	 * @param string $str
+	 * @param array $options
+	 *  - `replace` (string): Character(s) to replace whitespace with (default=' ' i.e. single space).
+	 *  - `collapse` (bool): Cllapse consecutive replace chars to single? (default=false)
+	 *  - `trim` (bool): Trim whitespace from beginning and end? (default=false)
+	 *  - `html` (bool): Remove/replace HTML whitespace entities too? (default=false)
+	 *  - `allow` (array): Array of whitespace characters that may remain. (default=[" "])
+	 *  - `multiline` (bool): Allow newlines? This adds "\n" to the allow list. (default=false)
+	 * @return string
+	 * @since 3.0.123
+	 * 
+	 */
+	public function normalizeWhitespace($str, $options = array()) {
+		$defaults = array(
+			'replace' => ' ',
+			'collapse' => false, 
+			'trim' => false, 
+			'html' => false, 
+			'allow' => array(' '), 
+			'multiline' => false, 
+		);
+		$options = array_merge($defaults, $options);
+		if(!$options['multiline'] && in_array("\n", $options['allow'])) {
+			$options['multiline'] = true;
+		}
+		if($options['multiline']) {
+			$options['allow'][] = "\n";
+			if(strpos($str, "\r") !== false) $str = str_replace(array("\r\n", "\r"), "\n", $str);
+		}
+		$str = $this->removeWhitespace($str, $options);
+		return $str; 
+	}
+
+	/**
+	 * Get array of all characters (including UTF-8) that can be used as whitespace in strings
+	 * 
+	 * #pw-internal
+	 * 
+	 * @param bool|int $html Also include HTML entities that represent whitespace? false=no, true=both, 1=only-html (default=false)
+	 * @return array
+	 * @since 3.0.105
+	 * 
+	 */
+	public function getWhitespaceArray($html = false) {
+	
+		static $whitespaceUTF8 = array();
+		static $whitespaceHTML = array();
+		
+		if(empty($whitespaceUTF8)) {
+			// json_decode can handle conversion of \u0000 sequences regardless of PHP version
+			$whitespaceUTF8 = json_decode('["\u' . implode('","\u', $this->whitespaceUTF8) . '"]', true); 
+		}
+		
+		if($html) {
+			if(empty($whitespaceHTML)) {
+				$whitespaceHTML = $this->whitespaceHTML;
+				foreach($this->whitespaceUTF8 as $key => $value) {
+					$whitespaceHTML[] = "&#x$value;"; // hex entity
+					$whitespaceHTML[] = "&#" . hexdec($value) . ';'; // decimal entity
+				}
+			}
+			$whitespace = $html === 1 ? $whitespaceHTML : array_merge($whitespaceUTF8, $whitespaceHTML); 
+		} else {
+			$whitespace = $whitespaceUTF8;
+		}
+		
+		return $whitespace;
+	}
+	
+	/**
+	 * Truncate string to given maximum length without breaking words
+	 *
+	 * This method can truncate between words, sentences, punctuation or blocks (like paragraphs).
+	 * See the `type` option for details on how it should truncate. By default it truncates between
+	 * words. Description of types:
+	 *
+	 * - word: truncate to closest word.
+	 * - punctuation: truncate to closest punctuation within sentence.
+	 * - sentence: truncate to closest sentence.
+	 * - block: truncate to closest block of text (like a paragraph or headline).
+	 *
+	 * Note that if your specified `type` is something other than “word”, and it cannot be matched
+	 * within the maxLength, then it will attempt a different type. For instance, if you specify
+	 * “sentence” as the type, and it cannot match a sentence, it will try to match to “punctuation”
+	 * instead. If it cannot match that, then it will attempt “word”.
+	 *
+	 * HTML will be stripped from returned string. If you want to keep some tags use the `keepTags` or `keepFormatTags`
+	 * options to specify what tags are allowed to remain. The `keepFormatTags` option that, when true, will make it
+	 * retain all HTML inline text formatting tags.
+	 *
+	 * ~~~~~~~
+	 * // Truncate string to closest word within 150 characters
+	 * $s = $sanitizer->truncate($str, 150);
+	 *
+	 * // Truncate string to closest sentence within 300 characters
+	 * $s = $sanitizer->truncate($str, 300, 'sentence');
+	 *
+	 * // Truncate with options
+	 * $s = $sanitizer->truncate($str, [
+	 *   'type' => 'punctuation',
+	 *   'maxLength' => 300,
+	 *   'visible' => true,
+	 *   'more' => '…'
+	 * ]);
+	 * ~~~~~~~
+	 *
+	 * @param string $str String to truncate
+	 * @param int|array $maxLength Maximum length of returned string, or specify $options array here.
+	 * @param array|string $options Options array, or specify `type` option (string).
+	 *  - `type` (string): Preferred truncation type of word, punctuation, sentence, or block. (default='word')
+	 *       This is a “preferred type”, not an absolute one, because it will adjust to match what it can within your maxLength.
+	 *  - `maxLength` (int): Max characters for truncation, used only if $options array substituted for $maxLength argument.
+	 *  - `maximize` (bool): Include as much as possible within specified type and max-length? (default=true)
+	 *       If you specify false for the maximize option, it will truncate to first word, puncutation, sentence or block.
+	 *  - `visible` (bool): When true, invisible text (markup, entities, etc.) does not count towards string length. (default=false)
+	 *  - `trim` (string): Characters to trim from returned string. (default=',;/ ')
+	 *  - `noTrim` (string): Never trim these from end of returned string. (default=')]>}”»')
+	 *  - `more` (string): Append this to truncated strings that do not end with sentence punctuation. (default='…')
+	 *  - `keepTags` (array): HTML tags that should be kept in returned string. (default=[])
+	 *  - `keepFormatTags` (bool): Keep HTML text-formatting tags? Simpler alternative to keepTags option. (default=false)
+	 *  - `collapseLinesWith` (string): String to collapse lines with where the first is not punctuated. (default=' … ')
+	 *  - `convertEntities` (bool): Convert HTML entities to non-entity characters? (default=false)
+	 *  - `noEndSentence` (string): Strings that sentence may not end with, space-separated values (default='Mr. Mrs. …')
+	 * @return string
+	 * @since 3.0.101
+	 *
+	 */
+	public function truncate($str, $maxLength = 300, $options = array()) {
+		return $this->getTextTools()->truncate($str, $maxLength, $options);
 	}
 
 	/**
@@ -1818,7 +2273,7 @@ class Sanitizer extends Wire {
 	 * @return string|array|mixed 
 	 * 
 	 */
-	function removeMB4($value) {
+	public function removeMB4($value) {
 		if(empty($value)) return $value;
 		if(is_array($value)) {
 			// process array recursively, looking for strings to convert
@@ -1841,6 +2296,175 @@ class Sanitizer extends Wire {
 			// not a string or an array, leave as-is
 		}
 		return $value;
+	}
+
+	/**
+	 * Convert string to be all hyphenated-lowercase (aka kabab-case, hyphen-case, dash-case, etc.)
+	 * 
+	 * For example, "Hello World" or "helloWorld" becomes "hello-world".
+	 * 
+	 * #pw-group-strings
+	 * 
+	 * @param string $value
+	 * @param array $options
+	 *  - `hyphen` (string): Character to use as the hyphen (default='-')
+	 *  - `allow` (string): Characters to allow or range of characters to allow, for placement in regex (default='a-z0-9').
+	 *  - `allowUnderscore` (bool): Allow underscores? (default=false)
+	 * @return string
+	 * 
+	 */
+	public function hyphenCase($value, array $options = array()) {
+		
+		$defaults = array(
+			'hyphen' => '-', 
+			'allow' => 'a-z0-9', 
+			'allowUnderscore' => false,
+		);
+
+		$options = array_merge($defaults, $options);
+		$value = $this->string($value);
+		$hyphen = $options['hyphen'];
+	
+		// if value is empty then exit now
+		if(!strlen($value)) return '';
+		
+		if($options['allowUnderscore']) $options['allow'] .= '_';
+	
+		// check if value is already in the right format, and return it if so
+		if(strtolower($value) === $value) {
+			if($options['allow'] === $defaults['allow']) {
+				if(ctype_alnum(str_replace($hyphen, '', $value))) return $value;
+			} else {
+				if(preg_match('/^[' . $hyphen . $options['allow'] . ']+$/', $value)) return $value;
+			}
+		}
+		
+		// don’t allow apostrophes to be separators
+		$value = str_replace(array("'", "’"), '', $value);
+		// some initial whitespace conversions to reduce workload on preg_replace
+		$value = str_replace(array(" ", "\r", "\n", "\t"), $hyphen, $value);	
+		// convert everything not allowed to hyphens
+		$value = preg_replace('/[^' . $options['allow'] . ']+/i', $hyphen, $value);
+		// convert camel case to hyphenated
+		$value = preg_replace('/([[:lower:]])([[:upper:]])/', '$1' . $hyphen . '$2', $value);
+		// prevent doubled hyphens
+		$value = preg_replace('/' . $hyphen . $hyphen . '+/', $hyphen, $value);
+		
+		if($options['allowUnderscore']) {
+			$value = str_replace(array('-_', '_-'), '_', $value);
+		}
+		
+		return strtolower(trim($value, $hyphen)); 
+	}
+	
+	/**
+	 * Alias of hyphenCase()
+	 * 
+	 * #pw-group-strings
+	 *
+	 * @param string $value
+	 * @param array $options See hyphenCase()
+	 * @return string
+	 *
+	 */
+	public function kebabCase($value, array $options = array()) {
+		return $this->hyphenCase($value, $options);
+	}
+
+	/**
+	 * Convert string to be all snake_case (lowercase and underscores)
+	 *
+	 * For example, "Hello World" or "hello-world" becomes "hello_world".
+	 * 
+	 * #pw-group-strings
+	 *
+	 * @param string $value
+	 * @param array $options
+	 *  - `allow` (string): Characters to allow or range of characters to allow, for placement in regex (default='a-z0-9').
+	 *  - `hyphen` (string): Character to use as the hyphen (default='-')
+	 * @return string
+	 *
+	 */
+	public function snakeCase($value, array $options = array()) {
+		$options['hyphen'] = '_';
+		return $this->hyphenCase($value, $options);
+	}
+
+	/**
+	 * Convert string to be all camelCase
+	 * 
+	 * For example, "Hello World" becomes "helloWorld" or "foo-bar-baz" becomes "fooBarBaz".
+	 * 
+	 * #pw-group-strings
+	 * 
+	 * @param string $value
+	 * @param array $options
+	 *  - `allow` (string): Characters to allow or range of characters to allow, for placement in regex (default='a-zA-Z0-9').
+	 *  - `allowUnderscore` (bool): Allow underscore characters? (default=false)
+	 *  - `startLowercase` (bool): Always start return value with lowercase character? (default=true)
+	 *  - `startNumber` (bool): Allow return value to begin with a number? (default=false)
+	 * @return string
+	 * 
+	 */
+	public function camelCase($value, array $options = array()) {
+		
+		$defaults = array(
+			'allow' => 'a-zA-Z0-9',
+			'allowUnderscore' => false, 
+			'startLowercase' => true, 
+			'startNumber' => false, 
+		);
+		
+		$options = array_merge($defaults, $options);
+		$allow = $options['allow'] . ($options['allowUnderscore'] ? '_' : ''); 
+		$needsWork = true;
+		
+		if($allow === $defaults['allow']) {
+			if(ctype_alnum($value)) $needsWork = false;
+		} else {
+			if(preg_match('/^[' . $allow . ']+$/', $value)) $needsWork = false;
+		}
+	
+		if($needsWork) {
+			$value = preg_replace('/([^' . $allow . ' ]+)([' . $allow . ']+)/', '$1 $2', $value);
+			$value = preg_replace('/[^' . $allow . ' ]+/', '', $value);
+
+			$parts = explode(' ', $value);
+			$value = '';
+
+			foreach($parts as $n => $part) {
+				if(empty($part)) continue;
+				$value .= $n ? ucfirst($part) : $part;
+			}
+		}
+		
+		if($options['startLowercase'] && isset($value[0])) {
+			$value[0] = strtolower($value[0]);
+		}
+		
+		if(!$options['startNumber']) {
+			$value = ltrim($value, '0123456789'); 
+		}
+		
+		return $value;
+	}
+
+	/**
+	 * Convert string to PascalCase (like camelCase, but first letter always uppercase)
+	 * 
+	 * For example, "hello world" becomes "HelloWorld" or "foo-bar-baz" becomes "FooBarBaz".
+	 * 
+	 * #pw-group-strings
+	 * 
+	 * @param string $value
+	 * @param array $options See options for camelCase() method
+	 * @return string
+	 * 
+	 */
+	public function pascalCase($value, array $options = array()) {
+		$options['startLowercase'] = false;
+		$value = $this->camelCase($value, $options);
+		return ucfirst($value);
 	}
 
 	/**
@@ -2438,6 +3062,21 @@ class Sanitizer extends Wire {
 			$results[$method] = $this->$method($value);
 		}
 		return $results;
+	}
+
+	/**
+	 * Get instance of WireTextTools
+	 * 
+	 * @return WireTextTools
+	 * @since 3.0.101
+	 * 
+	 */
+	public function getTextTools() {
+		if(!$this->textTools) {
+			$this->textTools = new WireTextTools();
+			$this->wire($this->textTools);
+		}
+		return $this->textTools;
 	}
 
 	/**********************************************************************************************************************

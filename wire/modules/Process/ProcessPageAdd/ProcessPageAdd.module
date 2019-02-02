@@ -8,23 +8,88 @@
  * For more details about how Process modules work, please see: 
  * /wire/core/Process.php 
  * 
- * ProcessWire 3.x, Copyright 2016 by Ryan Cramer
+ * ProcessWire 3.x, Copyright 2017 by Ryan Cramer
  * https://processwire.com
+ * 
+ * @method string executeTemplate()
+ * @method bool processQuickAdd(Page $parent, Template $template)
+ * @method InputfieldForm buildForm()
+ * @method bool processInput(InputfieldForm $form)
+ * @method array getAllowedTemplates($parent = null)
+ * @method string nameChangedWarning(Page $page, $namePrevious)
  *
  */
 
 class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEditor {
 
-	protected $form; 
-	protected $parent = null; 
+	/**
+	 * @var InputfieldForm
+	 * 
+	 */
+	protected $form;
+
+	/**
+	 * @var Page|null
+	 * 
+	 */
+	protected $parent = null;
+
+	/**
+	 * @var int
+	 * 
+	 */
 	protected $parent_id = 0;
-	protected $page; 
-	protected $template = null; 
+
+	/**
+	 * @var Page
+	 * 
+	 */
+	protected $page;
+
+	/**
+	 * @var Template|null
+	 * 
+	 */
+	protected $template = null;
+
+	/**
+	 * @var array|null
+	 * 
+	 */
 	protected $allowedTemplates = null; //cache
+
+	/**
+	 * @var array
+	 * 
+	 */
 	protected $predefinedTemplates = array();
-	protected $predefinedParents = array(); 
+	
+	/**
+	 * @var PageArray|array
+	 *
+	 */
+	protected $predefinedParents = array();
+
+	/**
+	 * @var WirePageEditor|ProcessPageAdd
+	 * 
+	 */
 	protected $editor; // WirePageEditor
 
+	/**
+	 * Settings that may be specified with $config->pageAdd array
+	 * 
+	 * @var array
+	 * 
+	 */
+	protected $settings = array(
+		'noSuggestTemplates' => '', // Disable suggestions: 1|true=disable all, or space-separated template names
+	);
+
+	/**
+	 * @return array
+	 * 
+	 */
 	public static function getModuleInfo() {
 		return array(
 			'title' => __('Page Add', __FILE__),          
@@ -36,19 +101,37 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 			'useNavJSON' => true, 
 			);
 	}
-	
+
+	/**
+	 * Construct and populate default config
+	 * 
+	 */
 	public function __construct() {
 		$this->editor = $this; 
 		parent::__construct();
 		$this->set('noAutoPublish', false); 
 		$this->set('shortcutSort', array());
+		$settings = $this->wire('config')->pageAdd;
+		if(is_array($settings)) $this->settings = array_merge($this->settings, $settings); 
 	}
 
+	/**
+	 * Module init
+	 * 
+	 */
 	public function init() {
 		$this->page = null;
 		return parent::init();
 	}
 
+	/**
+	 * Set property 
+	 * 
+	 * @param string $key
+	 * @param mixed $value
+	 * @return Process|ProcessPageAdd
+	 * 
+	 */
 	public function set($key, $value) {
 		if($key == 'parent_id') $this->parent_id = (int) $value;
 			else if($key == 'template' &&  $value instanceof Template) $this->template = $value;
@@ -156,12 +239,14 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 		unset($data['modified']);
 
 		// get additional from PageBookmarks
-		$bookmarks = $this->getPageBookmarks($this);
+		$bookmarks = $this->getPageBookmarks();
 		$options2 = $bookmarks->initNavJSON(array('add' => 'ignore-me'));	
 		$lastItem = null;
 		$listLength = count($data['list']);
 		$n = 0;
+		
 		foreach(array_values($options2['items']) as $p) {
+			/** @var Page $p */
 			if($p->id == 'bookmark' && !$user->isSuperuser()) continue;
 			$item = array(
 				'url' => ($p->id == 'bookmark' ? 'bookmarks/?role=0' : "?parent_id=$p->id"),
@@ -186,6 +271,13 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 		return json_encode($data);
 	}
 
+	/**
+	 * Ask user to select template and parent
+	 * 
+	 * @return string
+	 * @throws WireException
+	 * 
+	 */
 	public function ___executeTemplate() {
 
 		$templateID = (int) $this->input->get->template_id; 
@@ -243,7 +335,13 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 		$form->add($f); 
 		return $form->render();
 	}
-	
+
+	/**
+	 * Render an HTML definition list template selection for when no parent/template is known
+	 * 
+	 * @return string
+	 * 
+	 */
 	public function renderChooseTemplate() {
 		$data = $this->executeNavJSON(array('getArray' => true)); 
 		$out = '';
@@ -272,7 +370,7 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 				foreach($parents as $parent) {
 					$url = $item['url'];
 					if(strpos($url, 'parent_id') === false) $url .= "&parent_id=$parent->id";
-					$out .= "<li><i class='fa fa-fw'></i> <a href='./$url'>";
+					$out .= "<li><a href='./$url'>";
 					foreach($parent->parents()->and($parent) as $p) {
 						if($p->id == 1) continue;
 						$out .= "$p->title<i class='ui-priority-secondary fa fa-fw fa-angle-right'></i>";
@@ -301,7 +399,15 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 		}
 		return $out; 
 	}
-	
+
+	/**
+	 * Method to handle AJAX call to check of a given page name exists for a parent
+	 * 
+	 * Returns error or OK message in HTML
+	 * 
+	 * @return string
+	 * 
+	 */
 	public function executeExists() {
 		$parentID = (int) $this->wire('input')->get('parent_id'); 
 		if(!$parentID) return '';
@@ -319,6 +425,14 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 		return $out; 
 	}
 
+	/**
+	 * Main execution, first screen of adding a Page
+	 * 
+	 * @return string
+	 * @throws Wire404Exception
+	 * @throws WireException
+	 * 
+	 */
 	public function ___execute() {
 
 		$input = $this->wire('input');
@@ -380,7 +494,11 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 		$this->form->setTrackChanges();
 		
 		if($input->post('submit_save') || $input->post('submit_publish') || $input->post('submit_publish_add')) {
-			$this->processInput($this->form);
+			if($this->processInput($this->form)) {
+				// redirect occurs within processInput
+			} else {
+				// errors occurred during process input, re-render form
+			}
 		}
 
 		$this->setupBreadcrumbs();
@@ -390,6 +508,9 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 
 	/**
 	 * Returns an array of templates that are allowed to be used here
+	 * 
+	 * @param Page|null $parent
+	 * @return array
 	 *
 	 */
 	protected function ___getAllowedTemplates($parent = null) {
@@ -609,10 +730,14 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 
 	/**
 	 * Build the form fields for adding a page
+	 * 
+	 * @return InputfieldForm
+	 * @throws WireException
 	 *
 	 */
 	protected function ___buildForm() {
 
+		/** @var InputfieldForm $form */
 		$form = $this->modules->get('InputfieldForm');
 
 		$form->attr('id', 'ProcessPageAdd'); 
@@ -641,6 +766,7 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 				}
 			}
 		} else if($this->template) {
+			/** @var Field $field */
 			$field = $this->template->fieldgroup->getField('title', true);
 			if($field) {
 				if(in_array($field->collapsed, array(Inputfield::collapsedNoLocked, Inputfield::collapsedYesLocked))) {
@@ -653,10 +779,12 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 			}
 		}
 
+		/** @var InputfieldPageName $field */
 		$field = $this->modules->get('InputfieldPageName');
 		$field->parentPage = $this->parent; 
 		$field->attr('name', '_pw_page_name'); 
 		$field->required = true; 
+		
 		if($this->template) {
 			$field->slashUrls = $this->template->slashUrls;
 			$label = $this->template->getNameLabel(); 
@@ -665,6 +793,8 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 		} else {
 			$languages = $this->wire('languages');
 		}
+		
+		/** @var Languages $languages */
 		if($languages && $this->parent && $this->parent_id > 0) {
 			foreach($languages as $language) {
 				if($language->isDefault()) continue;
@@ -704,9 +834,25 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 			
 		} else {
 			// multiple templates are possible so give them a select
-	
+
+			/** @var InputfieldSelect $field */
 			$field = $this->modules->get('InputfieldSelect');
-	
+			
+			$noSuggest = $this->settings['noSuggestTemplates'];
+			if(empty($noSuggest)) {
+				$noSuggest = false;
+			} else {
+				// determine whether to show blank option at top
+				$ptpl = $this->parent ? $this->parent->template->name : '';
+				$noSuggestArray = is_array($noSuggest) ? $noSuggest : explode(' ', $noSuggest);
+				if(((string) $noSuggest) === "1" || ($ptpl && in_array($ptpl, $noSuggestArray))) {
+					$field->addOption('', '', array('data-publish' => false, 'data-nolang' => false));
+					$noSuggest = true;
+				} else {
+					$noSuggest = false;
+				}
+			}
+
 			foreach($allowedTemplates as $template) {
 				if(!count($this->predefinedTemplates) && $this->template && $template->id != $this->template->id) continue; 
 				$numFields = count($template->fieldgroup); 	
@@ -723,7 +869,7 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 				)); 
 			}
 			
-			$field->attr('value', $defaultTemplateId); 
+			if(!$noSuggest) $field->attr('value', $defaultTemplateId); 
 		}
 		
 		$field->label = $this->_('Template'); // Template field label
@@ -731,7 +877,7 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 		$field->icon = 'cubes';
 		$field->required = true; 
 		$field instanceof InputfieldHidden ? $form->append($field) : $form->prepend($field);
-
+	
 		if(count($this->predefinedParents) > 1) {
 			$field = $this->modules->get('InputfieldSelect');
 			$field->attr('name', 'parent_id');
@@ -753,7 +899,8 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 			$field->attr('value', $value);
 			$form->append($field);
 		}
-	
+
+		/** @var InputfieldSubmit $field */
 		$field = $this->modules->get('InputfieldSubmit');
 		$field->attr('name', 'submit_save'); 
 		$field->attr('value', $this->_('Save')); 
@@ -767,21 +914,23 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 				if($publishPermission->id && !$this->wire('user')->hasPermission('page-publish')) $allowPublish = false;
 			}
 			if($allowPublish) {
+				/** @var InputfieldSubmit $field */
 				$field = $this->modules->get('InputfieldSubmit');
 				$field->attr('id+name', 'submit_publish');
 				$field->attr('value', $this->_('Save + Publish'));
 				$field->setSecondary();
 				$form->append($field);
-				
-				$field = $this->modules->get('InputfieldSubmit');
-				$field->attr('id+name', 'submit_publish_add');
-				$field->attr('value', $this->_('Save + Publish + Add Another'));
-				$field->setSecondary();
-				$form->append($field);
+			
+				if(!$this->wire('input')->get('modal')) {
+					$field = $this->modules->get('InputfieldSubmit');
+					$field->attr('id+name', 'submit_publish_add');
+					$field->attr('value', $this->_('Save + Publish + Add Another'));
+					$field->setSecondary();
+					$form->append($field);
+				}
 			}
 		}
 
-		// $allowedTemplates = $this->getAllowedTemplates();	
 		if(count($allowedTemplates) == 1) {
 			$t = reset($allowedTemplates);
 			$form->description = $this->getTemplateLabel($t); 
@@ -792,6 +941,9 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 
 	/**
 	 * Return the label for the given Template
+	 * 
+	 * @param Template $template
+	 * @return string
 	 *
 	 */
 	protected function getTemplateLabel(Template $template) {
@@ -894,41 +1046,72 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 		} else {
 			return false;
 		}
-
+		
+		return true;
 	}
 
+	/**
+	 * Populate a session message indicating info about created page
+	 * 
+	 * @param Page $page
+	 * 
+	 */
 	protected function createdPageMessage(Page $page) {
-		$this->session->message(sprintf($this->_('Created page %1$s using template: %2$s'), $page->parent->url . $page->name, $page->template->name)); 
+		$this->session->message(
+			sprintf(
+				$this->_('Created page %1$s using template: %2$s'), 
+				$page->parent->url . $page->name, $page->template->name
+			)
+		); 
+	}
+	
+	/**
+	 * Hook called when the page's name changed during save
+	 *
+	 * @param Page $page
+	 * @param $namePrevious
+	 * @return string Warning message
+	 *
+	 */
+	protected function ___nameChangedWarning(Page $page, $namePrevious) {
+		return sprintf(
+			$this->_('Warning, the name you selected "%1$s" has been changed to "%2$s".'),
+			$namePrevious, $page->name
+		);
 	}
 
 	/**
 	 * Save the submitted page add form
+	 * 
+	 * @param InputfieldForm $form
+	 * @throws WireException
+	 * @return bool
 	 *
 	 */
-	protected function ___processInput(Inputfield $form) {
+	protected function ___processInput(InputfieldForm $form) {
 
 		$this->page = $this->wire('pages')->newPage(); // must exist before processInput for language hooks
 		$form->processInput($this->input->post);
 
-		$nameField = $form->children->get('_pw_page_name'); 	
+		/** @var InputfieldPageName $nameField */
+		$nameField = $form->getChildByName('_pw_page_name'); 	
 		$name = $nameField->value; 
 
 		if(!strlen($name)) {
-			$this->error($this->_("Missing required field: name")); 
+			$nameField->error($this->_("Missing required field: name")); 
 			return false; 
 		}
 
-		/*
-		if($this->parent->child("name=$name, include=all")->id) {
-			$nameField->error($this->_("The name you selected is already in use. Please select another."));
-			return false;
-		}
-		*/
-
 		$template = $this->template; 
 		if(is_null($template)) { 
-			$templatesId = (int) $form->children->get('template')->value; 
-			$template = $this->templates->get($templatesId); 
+			/** @var InputfieldSelect $templateField */
+			$templateField = $form->getChildByName('template');
+			$templatesId = (int) $templateField->val();
+			$template = $templatesId ? $this->templates->get($templatesId) : null; 
+			if(!$template) {
+				$templateField->error($this->_('Template selection is required')); 
+				return false;
+			}
 		}
 
 		if(!$this->isAllowedTemplate($template, $this->parent)) {
@@ -988,17 +1171,17 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 		$this->createdPageMessage($this->page); 
 		
 		if($pageName != $this->page->name) {
-			$this->error(sprintf(
-				$this->_('Warning, the name you selected "%1$s" was already in use and has been changed to "%2$s".'), 
-				$pageName, $this->page->name
-			));
-		} 
+			$warning = $this->nameChangedWarning($this->page, $pageName);
+			if($warning) $this->warning($warning);
+		}
 		
 		if($publishNow && $publishAdd) {
 			$this->session->redirect("./?parent_id={$this->page->parent_id}&template_id={$this->page->template->id}");
 		} else {
 			$this->session->redirect("../edit/?id={$this->page->id}&new=1" . ($this->input->get->modal ? "&modal=1" : ''));
 		}
+		
+		return true;
 	}
 
 	/**
@@ -1010,19 +1193,28 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 		$breadcrumbs = $this->wire(new Breadcrumbs());
 		$breadcrumbs->add(new Breadcrumb($this->config->urls->admin . 'page/list/', "Pages"));
 		foreach($this->parent->parents()->append($this->parent) as $p) {
+			/** @var Page $p */
 			$breadcrumbs->add(new Breadcrumb($this->config->urls->admin . "page/list/?open=" . $p->id, $p->get("title|name"))); 
 		}
 		$this->wire('breadcrumbs', $breadcrumbs); 
 	}
 
 	/**
+	 * Get the Page that is being edited
+	 * 
 	 * @return Page|null
 	 *
 	 */
 	public function getPage() {
 		return $this->page ? $this->page : $this->wire('pages')->newNullPage(); 
 	}
-	
+
+	/**
+	 * Set the WirePageEditor that is calling this Process
+	 * 
+	 * @param WirePageEditor $editor
+	 * 
+	 */
 	public function setEditor(WirePageEditor $editor) {
 		$this->editor = $editor; 
 	}
@@ -1077,7 +1269,7 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 		$bookmarks = $this->getPageBookmarks();
 		$form = $bookmarks->editBookmarksForm();
 
-		$roleID = $this->wire('input')->get('role');
+		$roleID = $this->wire('input')->get('role'); // no integer sanitization is intentional
 		
 		if(!is_null($roleID) && $roleID == 0 && $this->wire('user')->isSuperuser()) {
 			$f = $this->getShortcutSortField();
@@ -1092,13 +1284,20 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 		
 		return $form->render();
 	}
-	
+
+	/**
+	 * Get Inputfield that lets you define shorcuts and sort order
+	 * 
+	 * @return InputfieldAsmSelect
+	 * 
+	 */
 	public function getShortcutSortField() {
 		
 		$this->wire('session')->remove($this, 'nav');
 		$data = $this->executeNavJSON(array('getArray' => true));
 		$name = 'shortcutSort';
-	
+
+		/** @var InputfieldAsmSelect $f */
 		$f = $this->wire('modules')->get('InputfieldAsmSelect');
 		$f->label = $this->_('Template shortcut sort order');
 		$f->description = $this->_('To change the order of the "Add New" page-template shortcuts, drag and drop the options to the order you want them in.');
@@ -1107,7 +1306,6 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 		$f->icon = 'sort';
 		$f->setAsmSelectOption('removeLabel', '');
 
-		$out = '';
 		$value = array();
 
 		foreach($data['list'] as $item) {
@@ -1129,7 +1327,14 @@ class ProcessPageAdd extends Process implements ConfigurableModule, WirePageEdit
 		
 		return $f;
 	}
-	
+
+	/**
+	 * Get module configuration inputs
+	 * 
+	 * @param array $data
+	 * @return InputfieldWrapper
+	 * 
+	 */
 	public function getModuleConfigInputfields(array $data) {
 		
 		$form = $this->wire(new InputfieldWrapper());

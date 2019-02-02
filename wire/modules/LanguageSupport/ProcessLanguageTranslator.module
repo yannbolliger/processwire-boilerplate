@@ -290,7 +290,7 @@ class ProcessLanguageTranslator extends Process {
 				$newTextdomains = array();
 				foreach(array('site' => 'file_site', 'wire' => 'file_wire') as $key => $name) {
 					$postFiles = $this->input->post->$name;
-					if(!count($postFiles)) continue;
+					if(!wireCount($postFiles)) continue;
 					foreach($postFiles as $file) {
 						if(!isset($files[$key][$file])) continue;
 						$textdomain = $this->translator->filenameToTextdomain($file);
@@ -482,7 +482,7 @@ class ProcessLanguageTranslator extends Process {
 
 		/** @var InputfieldForm $form */
 		$form = $this->modules->get('InputfieldForm');
-		$form->attr('action', "./?textdomain=$textdomain");
+		$form->attr('action', "./?textdomain=$textdomain&language_id={$this->language->id}");
 		$form->attr('method', 'post');
 		$form->description = sprintf($this->_('Translate %1$s to %2$s'), basename($file), $this->language->title);
 		$form->value = "<p>" .
@@ -648,24 +648,35 @@ class ProcessLanguageTranslator extends Process {
 		
 		if(is_null($this->fp)) {
 			$f = $this->language->filesManager()->path() . '.phrase-index.txt'; // @todo make hidden
-			if(is_file($f)) unlink($f);
+			if(is_file($f)) $this->wire('files')->unlink($f);
 			$this->fp = fopen($f, "a");
 		}
 
 		$files = array();
 		$dirs = array();
 		$root = $this->wire('config')->paths->root;
+		$assetsDir = '/site/assets/';
+		if(DIRECTORY_SEPARATOR != '/') $assetsDir = str_replace('/', DIRECTORY_SEPARATOR, $assetsDir);
 
 		$find1 = array('$this->_(', '$this->_n(', '$this->_x(');
 		$find2 = array('__(', '_n(', '_x(');
+	
+		try {
+			$dirIterator = new \DirectoryIterator($path);
+		} catch(\Exception $e) {
+			$this->warning($e->getMessage());
+			$dirIterator = false;
+		}
+		
+		if(!$dirIterator) return array();
 
-		foreach(new \DirectoryIterator($path) as $file) {
+		foreach($dirIterator as $file) {
 
 			if($file->isDot()) continue;
 			if(substr($file->getBasename(), 0, 1) == '.') continue; // skip hidden;
 			if($file->isDir()) {
 				$pathname = $file->getPathname();
-				if(strpos($pathname, '/site/assets/') !== false) continue; // avoid descending into /site/assets/
+				if(strpos($pathname, $assetsDir) !== false) continue; // avoid descending into /site/assets/
 				$dirs[] = $pathname;
 				continue;
 			}

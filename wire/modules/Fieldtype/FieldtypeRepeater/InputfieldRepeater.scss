@@ -110,10 +110,24 @@
 		// delete checkbox
 		display: none;
 	}
+	
+	&.InputfieldRepeaterSingle {
+		// repeater in single-item mode
+		> .InputfieldContent > .Inputfields {
+			margin-bottom: 0;
+			> .InputfieldRepeaterItem {
+				margin-bottom: 0;
+				> .InputfieldHeader {
+					display: none;
+				}
+			}
+		}
+	}
 
 }
 
 .InputfieldRepeater {
+	z-index: 1; 	
 	
 	.InputfieldWrapper,
 	.InputfieldWrapper > .Inputfields {
@@ -127,9 +141,7 @@
 
 	.InputfieldRepeaterAddItem input {
 		// count of added items hidden
-		position: absolute;
-		left: -9999px;
-		top: 0;
+		display: none !important;
 	}
 
 	ul.Inputfields + .InputfieldRepeaterAddItem {

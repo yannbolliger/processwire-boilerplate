@@ -104,7 +104,8 @@ class PagePermissions extends WireData implements Module {
 		$this->addHook('Page::listable', $this, 'listable'); 
 		$this->addHook('Page::deleteable', $this, 'deleteable');
 		$this->addHook('Page::deletable', $this, 'deleteable');
-		$this->addHook('Page::trashable', $this, 'trashable'); 
+		$this->addHook('Page::trashable', $this, 'trashable');
+		$this->addHook('Page::restorable', $this, 'restorable'); 
 		$this->addHook('Page::addable', $this, 'addable'); 
 		$this->addHook('Page::moveable', $this, 'moveable'); 
 		$this->addHook('Page::sortable', $this, 'sortable'); 
@@ -116,10 +117,11 @@ class PagePermissions extends WireData implements Module {
 	/**
 	 * Hook that adds a Page::editable([$field]) method to determine if $page is editable by current user
 	 * 
-	 * A field name may optionally be specified as the first argument, in which case the field on that page will also be checked for access. 
+	 * A field name may optionally be specified as the first argument, in which case the field on that 
+	 * page will also be checked for access. 
 	 * 
-	 * When using field, specify boolean false for second argument to bypass PageEditable check, as an optimization, if you have 
-	 * already determined that the page is editable.
+	 * When using field, specify boolean false for second argument to bypass PageEditable check, as an 
+	 * optimization, if you have already determined that the page is editable.
 	 * 
 	 * @param HookEvent $event
 	 *
@@ -230,30 +232,59 @@ class PagePermissions extends WireData implements Module {
 	 * Returns whether the given user ($page) is editable by the current user 
 	 * 
 	 * @param User|Page $page
+	 * @param array $options
+	 *  - `viewable` (bool): Specify true if only a viewable check is needed (default=false)
 	 * @return bool
 	 * 
 	 */
-	public function userEditable(Page $page) {
+	public function userEditable(Page $page, array $options = array()) {
 		
+		/** @var User $user */
+		$user = $this->wire('user');
+		
+		/** @var Process|ProcessProfile|ProcessPageView|ProcessUser|ProcessPageList|ProcessPageLister $process */
+		$process = $this->wire('process');
+		
+		/** @var Config $config */
+		$config = $this->wire('config');
+		
+		$defaults = array(
+			'viewable' => false, // specify true if method is being used to determine viewable state
+		);
+		
+		$options = count($options) ? array_merge($defaults, $options) : $defaults;
+	
+		if(!$page->id) return false;
 		if($page->className() != 'User') $page = $this->wire('users')->get($page->id);
 		if(!$page || $page instanceof NullPage) return false;
-		
-		$user = $this->wire('user');
-
-		// if user is editing themselves in ProcessProfile, and they have permission to do so
-		if($user->id === $page->id && $this->wire('page')->process == 'ProcessProfile' && $user->hasPermission('profile-edit')) return true;
+	
+		if($user->id === $page->id && !$user->isGuest() && $user->hasPermission('profile-edit')) {
+			// user is the same as the page being edited or viewed
+			if($process == 'ProcessProfile') {
+				// user editing themself in ProcssProfile
+				return true;
+			} else if($this->wire('page') && $this->wire('page')->process == 'ProcessProfile') {
+				// user editing themself in ProcessProfile, when process not yet established
+				return true;
+			} else if($process == 'ProcessPageView' && $config->pagefileSecure && $options['viewable']) {
+				// user is viewing a file that is part of their User page when pagefileSecure mode active
+				return $process->getResponseType() == ProcessPageView::responseTypeFile;
+			}
+		}
 
 		// if the current process is something other than ProcessUser, they don't have permission
-		$process = $this->wire('process');
-		if($process != 'ProcessUser' && (!$process instanceof ProcessPageList) && (!$process instanceof ProcessPageLister)) {
-			return false;
+		if(!$options['viewable']) {
+			if($process != 'ProcessUser' && (!$process instanceof ProcessPageList) && (!$process instanceof ProcessPageLister)) {
+				return false;
+			}
 		}
 	
 		// if user doesn't have user-admin permission, they have no edit access
 		if(!$user->hasPermission('user-admin')) return false;
 
-		// if the user page being edited has a superuser role, and the current user doesn't, never let them edit regardless of any other permissions
-		$superuserRole = $this->wire('roles')->get($this->wire('config')->superUserRolePageID);
+		// if the user page being edited has a superuser role, and the current user doesn't,
+		// never let them edit regardless of any other permissions
+		$superuserRole = $this->wire('roles')->get($config->superUserRolePageID);
 		if($page->roles->has($superuserRole) && !$user->roles->has($superuserRole)) return false;
 
 		// if we reach this point then check if there are more granular user-admin permissions available
@@ -268,7 +299,7 @@ class PagePermissions extends WireData implements Module {
 
 		// there are role-specific permissions in the system, and user must have appropriate one to edit
 		$userEditable = false;
-		$guestRoleID = $this->wire('config')->guestUserRolePageID;
+		$guestRoleID = $config->guestUserRolePageID;
 		$n = 0;
 		foreach($page->roles as $role) {
 			$n++;
@@ -284,6 +315,11 @@ class PagePermissions extends WireData implements Module {
 		if($n == 0 || ($n == 1 && $page->roles->first()->id == $guestRoleID)) return true;
 		
 		return false;
+	}
+	
+	public function userViewable(Page $page, array $options = array()) {
+		$options['viewable'] = true; 
+		return $this->userEditable($page, $options); 
 	}
 
 	/**
@@ -448,12 +484,14 @@ class PagePermissions extends WireData implements Module {
 	/**
 	 * Is the given field editable by the current user in their user profile?
 	 *
-	 * @param string $name Field name
+	 * @param Field|string $name Field or Field name
 	 * @param User|null User to check (default=current user)
 	 * @return bool
 	 *
 	 */
 	public function userFieldEditable($name, User $user = null) {
+		if(is_object($name) && $name instanceof Field) $name = $name->name;
+		if(empty($name) || !is_string($name)) return false;
 		if(is_null($user)) $user = $this->wire('user');
 		if(!$user->isLoggedin()) return false;
 		if(!$user->hasPermission('profile-edit')) return false;
@@ -487,6 +525,7 @@ class PagePermissions extends WireData implements Module {
 		$arg1 = $event->arguments(1);
 		$field = null; // field name or Field object, if specified as arg0
 		$checkFile = true; // return false if template filename doesn't exist
+		$status = $page->status;
 
 		// allow specifying User instance as argument 0 
 		// this gives you a "viewable to user" capability
@@ -505,16 +544,36 @@ class PagePermissions extends WireData implements Module {
 			// bypass template filename check
 			$checkFile = false;
 		}
-		
-		if($page->status >= Page::statusUnpublished) $viewable = false;
-			else if(!$page->template || ($checkFile && !$page->template->filenameExists())) $viewable = false; 
-			else if($user->isSuperuser()) $viewable = true; 
-			else if($page->process) $viewable = $this->processViewable($page);
-			else if(!$user->hasPermission("page-view", $page)) $viewable = false;
-			else if($page->isTrash()) $viewable = false; 
 
-		// if the page is editable by the current user, force it to be viewable
-		if(!$viewable && !$user->isGuest() && $page->hasStatus(Page::statusUnpublished)) {
+		// if page has corrupted status, this need not affect viewable access
+		if($status & Page::statusCorrupted) $status = $status & ~Page::statusCorrupted;
+
+		// perform several viewable checks, in order
+		if($status >= Page::statusUnpublished) {
+			// unpublished pages are not viewable, but see override below this if/else statement
+			$viewable = false;
+		} else if(!$page->template || ($checkFile && !$page->template->filenameExists())) {
+			// template file does not exist
+			$viewable = false;
+		} else if($user->isSuperuser()) {
+			// superuser always allowed
+			$viewable = true;
+		} else if($page->process) {
+			// delegate access to permissions defined with Process module
+			$viewable = $this->processViewable($page);
+		} else if($page instanceof User && !$user->isGuest() && ($user->hasPermission('user-admin') || $page->id === $user->id)) {
+			// user administrator or user viewing themself
+			$viewable = $this->userViewable($page); 
+		} else if(!$user->hasPermission("page-view", $page)) {
+			// user lacks basic view permission to page
+			$viewable = false;
+		} else if($page->isTrash()) {
+			// pages in trash are not viewable, except to superuser
+			$viewable = false;
+		}
+
+		// if the page is editable by the current user, force it to be viewable (if not viewable due to being unpublished)
+		if(!$viewable && !$user->isGuest() && ($status & Page::statusUnpublished)) {
 			if($page->editable() && (!$checkFile || $page->template->filenameExists())) $viewable = true; 
 		}
 		
@@ -562,15 +621,57 @@ class PagePermissions extends WireData implements Module {
 		$user = $this->wire('user'); 
 		$listable = true; 
 
-		if($user->isSuperuser()) $listable = true; 
+		if($page instanceof NullPage) $listable = false;
+			else if($user->isSuperuser()) $listable = true; 
 			else if($page instanceof User && $user->hasPermission('user-admin')) $listable = true; 
 			else if($page->hasStatus(Page::statusUnpublished) && !$page->editable()) $listable = false;
 			else if($page->process && !$this->processViewable($page)) $listable = false;
-			else if($page->isTrash()) $listable = false; 
+			else if($page->isTrash()) $listable = $this->trashListable($page); 
 			else if(($accessTemplate = $page->getAccessTemplate()) && $accessTemplate->guestSearchable) $listable = true; 
 			else if(!$user->hasPermission("page-view", $page)) $listable = false;
 
 		$event->return = $listable; 
+	}
+
+	/**
+	 * Return whether or not given page in Trash is listable
+	 * 
+	 * @param null $page Page, or specify null for a general "trash is listable" request
+	 * @return bool
+	 * 
+	 */	
+	public function trashListable($page = null) {
+		/** @var User $user */
+		$user = $this->wire('user');
+		
+		// trash and anything in it always visible to superuser
+		if($user->isSuperuser()) return true;
+
+		// determine if system has page-edit-trash-created permission installed
+		$petc = 'page-edit-trash-created';
+		if(!$this->wire('permissions')->has($petc)) $petc = false;
+		
+		if($user->hasPermission('page-delete')) {
+			// has page-delete globally
+		} else if($petc && $user->hasPermission($petc)) {
+			// has page-edit-trash-created globally
+		} else if($user->hasPermission('page-delete', true)) {
+			// has page-delete added specifically at a template
+		} else if($petc && $user->hasPermission($petc, true)) {
+			// has page-edit-trash-created added specifically at a template
+		} else {
+			// user does not have any of the permissions above, so trash is not listable
+			return false;
+		}
+		
+		// if request not asking about specific page, return general "trash is listable?" request
+		if($page === null || !$page->id) return true; 
+		
+		// if request is for the actual Trash page, consider this to be a general request
+		if($page->id == $this->wire('config')->trashPageID) return true;
+	
+		// page is listable in the trash only if it is also editable
+		return $this->pageEditable($page); 
 	}
 
 	/**
@@ -640,6 +741,30 @@ class PagePermissions extends WireData implements Module {
 	}
 
 	/**
+	 * Is page restorable from trash? 
+	 * 
+	 * @param HookEvent $event
+	 * 
+	 */
+	public function restorable($event) {
+		/** @var Page $page */
+		$page = $event->object;
+		/** @var User $user */
+		$user = $this->wire('user');
+		$event->return = false;
+		if($page->isLocked()) return;
+		if(!$page->isTrash() && !$page->rootParent()->isTrash()) return;
+		if(!$user->isSuperuser() && !$page->editable()) return;
+		$info = $this->wire('pages')->trasher()->getRestoreInfo($page);
+		if(!$info['restorable']) return;
+		/** @var Page $parent */
+		$parent = $info['parent'];
+		// check if parent does not allow this user to add pages here
+		if(!$parent->id || !$parent->addable($page)) return;
+		$event->return = true; 
+	}
+
+	/**
 	 * Can the current user add child pages to this page?
 	 *
 	 * Optionally specify the page to be added as the first argument for additional access checking.
@@ -654,7 +779,8 @@ class PagePermissions extends WireData implements Module {
 		$page = $event->object; 
 		$user = $this->wire('user'); 
 		$addable = false; 
-		$_ADDABLE = false; // if we really mean it
+		$addPage = null;
+		$_ADDABLE = false; // if we really mean it (as in, do not perform secondary checks)
 		$superuser = $user->isSuperuser();
 
 		if($page->template->noChildren) {
@@ -679,7 +805,8 @@ class PagePermissions extends WireData implements Module {
 		// check if a $page is provided as the first argument for additional access checking
 		if($addable) {
 			$addPage = $event->arguments(0);
-			if($addPage && $addPage instanceof Page && $addPage->template && $page->template) {
+			if(!$addPage || !$addPage instanceof Page || !$addPage->id) $addPage = null;
+			if($addPage && $addPage->template && $page->template) {
 				if(count($page->template->childTemplates) && !in_array($addPage->template->id, $page->template->childTemplates)) {
 					$addable = false;
 				}
@@ -687,8 +814,8 @@ class PagePermissions extends WireData implements Module {
 		}
 	
 		// check additional permissions if in multi-language environment
-		if($addable && !$_ADDABLE && $this->wire('languages')) {
-			if(!$this->hasPageEditLangDefault($user, $page) || !$this->hasPageEditLangNone($user, $page)) {
+		if($addable && !$_ADDABLE && $addPage && $this->wire('languages')) {
+			if(!$this->hasPageEditLangDefault($user, $addPage) || !$this->hasPageEditLangNone($user, $addPage)) {
 				// if user can't edit default language, or can't edit non-multi-language fields, then deny add access
 				$addable = false;
 			}
@@ -756,14 +883,24 @@ class PagePermissions extends WireData implements Module {
 	 */
 	public function moveable($event) {
 		/** @var Page $page */
-		$page = $event->object; 
-		$moveable = $page->editable('parent');
-		if($moveable && count($event->arguments) && $event->arguments[0] instanceof Page) {
-			/** @var Page $parent */
-			$parent = $event->arguments[0];
-			$moveable = $parent->addable($page);
+		$page = $event->object;
+		
+		/** @var Page|null $parent */
+		$parent = $event->arguments(0);
+		if(!$parent || !$parent instanceof Page || !$parent->id) $parent = null;
+	
+		if($page->id == 1) {
+			$moveable = false;
+		} else {
+			$moveable = $page->editable('parent');
 		}
-		if($page->id == 1) $moveable = false; 
+		
+		if($moveable && $parent) {
+			$moveable = $parent->addable($page);
+		} else if($parent && $parent->isTrash() && $parent->id == $this->wire('config')->trashPageID) {
+			$moveable = $page->deletable();
+		}
+		
 		$event->return = $moveable;
 	}
 

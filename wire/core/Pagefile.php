@@ -12,11 +12,13 @@
  * Pagefile objects are contained by a `Pagefiles` object. 
  * #pw-body
  * 
- * ProcessWire 3.x, Copyright 2016 by Ryan Cramer
+ * ProcessWire 3.x, Copyright 2018 by Ryan Cramer
  * https://processwire.com
  *
- * @property-read string $url URL to the file on the server. 
- * @property-read string $URL Same as $url property but with browser cache busting query string appended that represents the file's modification time. #pw-group-other
+ * @property-read string $url URL to the file on the server.
+ * @property-read string $httpUrl URL to the file on the server including scheme and hostname.
+ * @property-read string $URL Same as $url property but with browser cache busting query string appended. #pw-group-other
+ * @property-read string $HTTPURL Same as the cache-busting uppercase “URL” property, but includes scheme and hostname. #pw-group-other
  * @property-read string $filename full disk path to the file on the server. 
  * @property-read string $name Returns the filename without the path, same as the "basename" property.
  * @property-read string $hash Get a unique hash (for the page) representing this Pagefile.
@@ -26,10 +28,13 @@
  * @property string $description Value of the file’s description field (string), if enabled. Note you can also set this property directly.
  * @property string $tags Value of the file’s tags field (string), if enabled. #pw-group-tags
  * @property string $ext File’s extension (i.e. last 3 or so characters) 
- * @property int $filesize File size (number of bytes).
+ * @property-read int $filesize File size (number of bytes).
  * @property int $modified Unix timestamp of when Pagefile (file, description or tags) was last modified. #pw-group-date-time
- * @property int $mtime Unix timestamp of when file (only) was last modified. #pw-group-date-time
+ * @property-read string $modifiedStr Readable date/time string of when Pagefile was last modified. #pw-group-date-time
+ * @property-read int $mtime Unix timestamp of when file (only) was last modified. #pw-group-date-time
+ * @property-read string $mtimeStr Readable date/time string when file (only) was last modified. #pw-group-date-time
  * @property int $created Unix timestamp of when file was created. #pw-group-date-time
+ * @property-read string $createdStr Readable date/time string of when Pagefile was created #pw-group-date-time
  * @property string $filesizeStr File size as a formatted string, i.e. “123 Kb”. 
  * @property Pagefiles $pagefiles The Pagefiles WireArray that contains this file. #pw-group-other
  * @property Page $page The Page object that this file is part of. #pw-group-other
@@ -37,7 +42,8 @@
  * 
  * @method void install($filename)
  * @method string httpUrl()
- *
+ * @method string noCacheURL($http = false)
+ * 
  */
 
 class Pagefile extends WireData {
@@ -54,7 +60,15 @@ class Pagefile extends WireData {
 	 * @var Pagefiles
 	 *
 	 */
-	protected $pagefiles; 
+	protected $pagefiles;
+
+	/**
+	 * Extra file data
+	 * 
+	 * @var array
+	 * 
+	 */
+	protected $filedata = array();
 
 	/**
 	 * Construct a new Pagefile
@@ -118,8 +132,17 @@ class Pagefile extends WireData {
 	 *
 	 */
 	protected function ___install($filename) {
+	
+		$basename = $filename;
+		
+		if(strpos($basename, '?') !== false) {
+			list($basename, $queryString) = explode('?', $basename); 	
+			if($queryString) {} // do not use in basename
+		} 
+	
+		if(empty($basename)) throw new WireException("Empty filename");
 
-		$basename = $this->pagefiles->cleanBasename($filename, true, false, true); 
+		$basename = $this->pagefiles->cleanBasename($basename, true, false, true); 
 		$pathInfo = pathinfo($basename); 
 		$basename = basename($basename, ".$pathInfo[extension]"); 
 
@@ -164,14 +187,20 @@ class Pagefile extends WireData {
 	 */
 	public function set($key, $value) {
 		
-		if($key == 'basename') $value = $this->pagefiles->cleanBasename($value, false); 
-		if($key == 'description') return $this->setDescription($value); 
-		if($key == 'modified') $value = ctype_digit("$value") ? (int) $value : strtotime($value); 
-		if($key == 'created') $value = ctype_digit("$value") ? (int) $value : strtotime($value);
-
-		if($key == 'tags') {
+		if($key == 'basename') {
+			$value = $this->pagefiles->cleanBasename($value, false);
+		} else if($key == 'description') {
+			return $this->setDescription($value);
+		} else if($key == 'modified') {
+			$value = ctype_digit("$value") ? (int) $value : strtotime($value);
+		} else if($key == 'created') {
+			$value = ctype_digit("$value") ? (int) $value : strtotime($value);
+		} else if($key == 'tags') {
 			$this->tags($value);
 			return $this;
+		} else if($key == 'filedata') {
+			if(is_array($value)) $this->filedata($value);
+			return $this;	
 		}
 		
 		if(strpos($key, 'description') === 0 && preg_match('/^description(\d+)$/', $value, $matches)) {
@@ -187,14 +216,73 @@ class Pagefile extends WireData {
 	}
 
 	/**
+	 * Get or set filedata
+	 * 
+	 * Filedata is any additional data that you want to store with the file’s database record. 
+	 *
+	 *  
+	 * - To get a value, specify just the $key argument. Null is returned if request value is not present. 
+	 * - To get all values, omit all arguments. An associative array will be returned. 
+	 * - To set a value, specify the $key and the $value to set. 
+	 * - To set all values at once, specify an associative array for the $key argument. 
+	 * - To unset, specify boolean false (or null) for $key, and the name of the property to unset as $value. 
+	 * - To unset, you can also get all values, unset it from the retuned array, and set the array back. 
+	 * 
+	 * #pw-internal
+	 * 
+	 * @param string|array|false|null $key Specify array to set all file data, or key (string) to set or get a property,
+	 *  Or specify boolean false to remove key specified by $value argument.
+	 * @param null|string|array|int|float $value Specify a value to set for given property
+	 * @return Pagefile|Pageimage|array|string|int|float|bool|null
+	 * 
+	 */
+	public function filedata($key = '', $value = null) {
+		$filedata = $this->filedata;
+		$changed = false;
+		if($key === false || $key === null) {
+			// unset property named in $value
+			if(!empty($value) && isset($filedata[$value])) {
+				unset($this->filedata[$value]);
+				$changed = true; 
+			}
+		} else if(empty($key)) {
+			// return all
+			return $filedata;
+		} else if(is_array($key)) {
+			// set all
+			if($key != $filedata) {
+				$this->filedata = $key;
+				$changed = true; 
+			}
+		} else if($value === null) {
+			// return value for key
+			return isset($this->filedata[$key]) ? $this->filedata[$key] : null;
+		} else {
+			// set value for key
+			if(!isset($filedata[$key]) || $filedata[$key] != $value) {
+				$this->filedata[$key] = $value;
+				$changed = true;
+			}
+		}
+		if($changed) {
+			$this->trackChange('filedata', $filedata, $this->filedata);
+			if($this->page && $this->field) $this->page->trackChange($this->field->name);
+		}
+		return $this;
+	}
+
+	/**
 	 * Set a description, optionally parsing JSON language-specific descriptions to separate properties
 	 *
-	 * @param string $value
+	 * @param string|array $value
 	 * @param Page|Language Langage to set it for. Omit to determine automatically. 
 	 * @return $this
 	 *
 	 */
 	protected function setDescription($value, Page $language = null) {
+		
+		/** @var Languages $languages */
+		$languages = $this->wire('languages');
 		
 		/** @var Language|null $language */
 		
@@ -207,27 +295,46 @@ class Pagefile extends WireData {
 				$name .= $language->id;
 			}
 			parent::set($name, $value); 
+			if($name != 'description' && $this->isChanged($name)) $this->trackChange('description');
 			return $this; 
 		}
 
-		// check if it contains JSON?
-		$first = substr($value, 0, 1); 
-		$last = substr($value, -1); 
-		if(($first == '{' && $last == '}') || ($first == '[' && $last == ']')) {
-			$values = json_decode($value, true); 
+		if(is_array($value)) {
+			$values = $value;
 		} else {
-			$values = array(); 
+			// check if it contains JSON?
+			$first = substr($value, 0, 1);
+			$last = substr($value, -1);
+			if(($first == '{' && $last == '}') || ($first == '[' && $last == ']')) {
+				$values = json_decode($value, true);
+			} else {
+				$values = array();
+			}
 		}
+		
+		$numChanges = 0;
 
 		if($values && count($values)) {
 			$n = 0; 
 			foreach($values as $id => $v) {	
 				// first item is always default language. this ensures description will still
 				// work even if language support is later uninstalled. 
-				if($noLang && $n > 0) continue;
-				$name = $n > 0 ? "description$id" : "description"; 
-				parent::set($name, $v); 
+				$name = 'description';
+				if($noLang && $n > 0) break;
 				$n++; 
+				if(ctype_digit("$id")) {
+					$id = (int) $id;
+					if(!$id) $id = '';
+					$name = $n > 0 ? "description$id" : "description";
+				} else if($id === 'default') {
+					$name = 'description';
+				} else if($languages) {
+					$language = $languages->get($id); // i.e. "default" or "es"
+					if(!$language->id) continue;
+					$name = $language->isDefault() ? "description" : "description$language->id";
+				}
+				parent::set($name, $v);
+				if($this->isChanged($name)) $numChanges++;
 			}
 		} else {
 			// no JSON values so assume regular language description
@@ -235,11 +342,15 @@ class Pagefile extends WireData {
 			$language = $languages ? $this->wire('user')->language : null; 
 
 			if($languages && $language && !$noLang && !$language->isDefault()) {
-				parent::set("description$language", $value); 
+				$name = "description$language->id";
 			} else {
-				parent::set("description", $value); 
+				$name = "description";
 			}
+			parent::set($name, $value);
+			if($this->isChanged($name)) $numChanges++;
 		}
+		
+		if($numChanges && !$this->isChanged('description')) $this->trackChange('description');
 
 		return $this;
 	}
@@ -268,17 +379,31 @@ class Pagefile extends WireData {
 	 * #pw-group-common
 	 * #pw-group-manipulation
 	 * 
-	 * @param null|bool|Language
+	 * @param null|bool|Language|array
 	 * - To GET in current user language: Omit arguments or specify null.
 	 * - To GET in another language: Specify a Language name, id or object.
 	 * - To GET in all languages as a JSON string: Specify boolean true (if LanguageSupport not installed, regular string returned).
+	 * - To GET in all languages as an array indexed by language name: Specify boolean true for both arguments.
 	 * - To SET for a language: Specify a language name, id or object, plus the $value as the 2nd argument.
 	 * - To SET in all languages as a JSON string: Specify boolean true, plus the JSON string $value as the 2nd argument (internal use only).
+	 * - To SET in all languages as an array: Specify the array here, indexed by language ID or name, and omit 2nd argument. 
 	 * @param null|string $value Specify only when you are setting (single language) rather than getting a value.
 	 * @return string
 	 *
 	 */
 	public function description($language = null, $value = null) {
+		
+		if($language === true && $value === true) {
+			// return all in array indexed by language name
+			/** @var Languages $languages */
+			$languages = $this->wire('languages');
+			if(!$languages) return array('default' => parent::get('description'));
+			$value = array();
+			foreach($languages as $language) {
+				$value[$language->name] = (string) parent::get("description" . ($language->isDefault() ? '' : $language->id));
+			}
+			return $value;	
+		}
 
 		if(!is_null($value)) {
 			// set description mode
@@ -290,6 +415,13 @@ class Pagefile extends WireData {
 				$this->setDescription($value, $language); 
 			}
 			return $value; 
+		}
+		
+		if(is_array($language)) {
+			// set all from array, then return description in current language
+			$this->setDescription($language); 	
+			$language = null;
+			$value = null;
 		}
 
 		if((is_string($language) || is_int($language)) && $this->wire('languages')) {
@@ -371,7 +503,10 @@ class Pagefile extends WireData {
 				break;
 			case 'URL':
 				// nocache url
-				$value = $this->url() . '?nc=' . @filemtime($this->filename());
+				$value = $this->noCacheURL();
+				break;
+			case 'HTTPURL':
+				$value = $this->noCacheURL(true);
 				break;
 			case 'pagefiles': 
 				$value = $this->pagefiles; 
@@ -390,12 +525,38 @@ class Pagefile extends WireData {
 					parent::set($key, $value); 
 				}
 				break;
+			case 'modifiedStr':
+			case 'createdStr':
+				$value = parent::get(str_replace('Str', '', $key));
+				$value = wireDate($this->wire('config')->dateFormat, $value);
+				break;
+			case 'fileData':
+			case 'filedata':
+				$value = $this->filedata();
+				break;
 			case 'mtime':
+			case 'mtimeStr':
+			case 'filemtime':	
+			case 'filemtimeStr':	
 				$value = filemtime($this->filename()); 
+				if(strpos($key, 'Str')) $value = wireDate($this->wire('config')->dateFormat, $value);
 				break;
 		}
 		if(is_null($value)) return parent::get($key); 
 		return $value; 
+	}
+
+	/**
+	 * Hookable no-cache URL
+	 * 
+	 * #pw-internal
+	 * 
+	 * @param bool $http Include scheme and hostname?
+	 * @return string
+	 * 
+	 */
+	public function ___noCacheURL($http = false) {
+		return ($http ? $this->httpUrl() : $this->url()) . '?nc=' . @filemtime($this->filename());
 	}
 
 	/**
@@ -791,7 +952,7 @@ class Pagefile extends WireData {
 	 */
 	public function unlink() {
 		if(!strlen($this->basename) || !is_file($this->filename)) return true; 
-		return unlink($this->filename); 	
+		return $this->wire('files')->unlink($this->filename, true);
 	}
 
 	/**
@@ -807,7 +968,7 @@ class Pagefile extends WireData {
 	 */
 	public function rename($basename) {
 		$basename = $this->pagefiles->cleanBasename($basename, true); 
-		if(rename($this->filename, $this->pagefiles->path . $basename)) {
+		if($this->wire('files')->rename($this->filename, $this->pagefiles->path . $basename, true)) {
 			$this->set('basename', $basename); 
 			return $this->basename();
 		}
@@ -820,7 +981,7 @@ class Pagefile extends WireData {
 	 * #pw-internal
 	 *
 	 * @param string $path Path (not including basename)
-	 * @return mixed result of copy() function
+	 * @return bool result of copy() function
 	 *
 	 */
 	public function copyToPath($path) {
@@ -876,6 +1037,30 @@ class Pagefile extends WireData {
 	 */
 	public function isTemp($set = null) {
 		return $this->pagefiles->isTemp($this, $set); 
+	}
+
+	/**
+	 * Debug info
+	 * 
+	 * @return array
+	 * 
+	 */
+	public function __debugInfo() {
+		$filedata = $this->filedata();
+		if(empty($filedata)) $filedata = null;
+		$info = array(
+			'url' => $this->url(),
+			'filename' => $this->filename(),
+			'filesize' => $this->filesize(),
+			'description' => $this->description,
+			'tags' => $this->tags, 
+			'created' => $this->createdStr,
+			'modified' => $this->modifiedStr,
+			'filemtime' => $this->mtimeStr,
+			'filedata' => $filedata,
+		);
+		if(empty($info['filedata'])) unset($info['filedata']); 
+		return $info;
 	}
 }
 

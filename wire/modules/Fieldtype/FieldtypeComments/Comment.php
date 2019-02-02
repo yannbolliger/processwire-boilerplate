@@ -119,6 +119,20 @@ class Comment extends WireData {
 	 */
 	protected $_parent = null;
 
+	/**
+	 * Quiet mode, when true actions like notification emails aren't triggered when applicable
+	 * 
+	 * @var bool
+	 * 
+	 */
+	protected $quiet = false;
+
+	/**
+	 * @var CommentArray|null
+	 * 
+	 */
+	protected $pageComments = null;
+
 	/**	
 	 * Construct a Comment and set defaults
 	 *
@@ -164,7 +178,16 @@ class Comment extends WireData {
 			
 		} else if($key == 'children') {
 			return $this->children();
-		}
+			
+		} else if($key == 'url') {
+			return $this->url();
+			
+		} else if($key == 'httpUrl' || $key == 'httpURL') {
+			return $this->httpUrl();
+			
+		} else if($key == 'editUrl' || $key == 'editURL') {
+			return $this->editUrl();
+		}	
 
 		return parent::get($key); 
 	}
@@ -235,6 +258,9 @@ class Comment extends WireData {
 
 	/**
 	 * Clean a comment string by issuing several filters
+	 * 
+	 * @param string $str
+	 * @return string
 	 *
 	 */
 	public function cleanCommentString($str) {
@@ -347,17 +373,48 @@ class Comment extends WireData {
 	 * 
 	 */
 	public function children() {
-		$field = $this->getField();
-		$comments = $this->getPage()->get($field->name);
+		/** @var CommentArray $comments */
+		$comments = $this->getPageComments();
 		$children = $comments->makeNew();
-		$children->setPage($this->getPage());
-		$children->setField($field); 
+		$page = $this->getPage();
+		$field = $this->getField();
+		if($page) $children->setPage($this->getPage());
+		if($field) $children->setField($this->getField()); 
 		$id = $this->id; 
 		foreach($comments as $comment) {
 			if(!$comment->parent_id) continue;
 			if($comment->parent_id == $id) $children->add($comment);
 		}
 		return $children;
+	}
+
+	/**
+	 * Get array that holds all the comments for the current Page/Field
+	 * 
+	 * #pw-internal
+	 * 
+	 * @param bool $autoDetect Autodetect from Page and Field if not already set? (default=true)
+	 * @return CommentArray|null
+	 * 
+	 */
+	public function getPageComments($autoDetect = true) {
+		if($autoDetect && !$this->pageComments) {
+			$field = $this->getField();
+			$this->pageComments = $this->getPage()->get($field->name);
+		}
+		return $this->pageComments;
+	}
+
+	/**
+	 * Set the CommentArray that holds all comments for the curent Page/Field
+	 * 
+	 * #pw-internal
+	 * 
+	 * @param CommentArray $pageComments
+	 * 
+	 */
+	public function setPageComments(CommentArray $pageComments) {
+		$this->pageComments = $pageComments;
 	}
 
 	/**
@@ -375,6 +432,52 @@ class Comment extends WireData {
 		return $comments->renderStars(false, $options);
 	}
 
+	/**
+	 * Get or set quiet mode
+	 * 
+	 * When quiet mode is active, comment additions/changes don't trigger notifications and such. 
+	 * 
+	 * @param bool $quiet Specify only if setting
+	 * @return bool The current quiet mode
+	 * 
+	 */
+	public function quiet($quiet = null) {
+		if(is_bool($quiet)) $this->quiet = $quiet; 
+		return $this->quiet; 
+	}
+
+	/**
+	 * Return URL to view comment
+	 * 
+	 * @param bool $http
+	 * @return string
+	 * 
+	 */
+	public function url($http = false) {
+		$fragment = "#Comment$this->id";
+		if(!$this->page || !$this->page->id) return $fragment; 
+		return ($http ? $this->page->httpUrl() : $this->page->url) . $fragment;
+	}
+
+	/**
+	 * Return full http URL to view comment
+	 * 
+	 * @return string
+	 * 
+	 */
+	public function httpUrl() {
+		return $this->url(true);
+	}
+
+	/**
+	 * Return URL to edit comment
+	 * 
+	 */
+	public function editUrl() {
+		if(!$this->page || !$this->page->id) return '';
+		if(!$this->field) return '';
+		return $this->page->editUrl() . "?field={$this->field->name}#CommentsAdminItem$this->id";
+	}
 }
 
 

@@ -251,6 +251,22 @@ class Modules extends WireArray {
 	protected $coreModulesDir = '';
 
 	/**
+	 * Array of moduleName => order to indicate autoload order when necessary
+	 * 
+	 * @var array
+	 * 
+	 */
+	protected $autoloadOrders = array();
+
+	/**
+	 * Are we currently refreshing?
+	 * 
+	 * @var bool
+	 * 
+	 */
+	protected $refreshing = false;
+
+	/**
 	 * Properties that only appear in 'verbose' moduleInfo
 	 * 
 	 * @var array
@@ -264,6 +280,7 @@ class Modules extends WireArray {
 		'core', 
 		'versionStr',
 		'permissions',
+		'searchable', 
 		'page',
 		);
 
@@ -567,14 +584,19 @@ class Modules extends WireArray {
 	 * Initialize a single module
 	 * 
 	 * @param Module $module
-	 * @param bool $clearSettings If true, module settings will be cleared when appropriate to save space. 
+	 * @param array $options
+	 *  - `clearSettings` (bool): When true, module settings will be cleared when appropriate to save space. (default=true)
+	 *  - `throw` (bool): When true, exceptions will be allowed to pass through. (default=false)
 	 * @return bool True on success, false on fail
+	 * @throws \Exception Only if the `throw` option is true. 
 	 *
 	 */
-	protected function initModule(Module $module, $clearSettings = true) {
+	protected function initModule(Module $module, array $options = array()) {
 		
 		$result = true;
 		$debugKey = null;
+		$clearSettings = isset($options['clearSettings']) ? (bool) $options['clearSettings'] : true; 
+		$throw = isset($options['throw']) ? (bool) $options['throw'] : false;
 		
 		if($this->debug) {
 			static $n = 0;
@@ -601,6 +623,7 @@ class Modules extends WireArray {
 			try {
 				$module->init();
 			} catch(\Exception $e) {
+				if($throw) throw($e);
 				$this->error(sprintf($this->_('Failed to init module: %s'), $moduleName) . " - " . $e->getMessage());
 				$result = false;
 			}
@@ -742,10 +765,9 @@ class Modules extends WireArray {
 	/**
 	 * Retrieve the installed module info as stored in the database
 	 *
-	 * @return array Indexed by module class name => array of module info
-	 *
 	 */
 	protected function loadModulesTable() {
+		$this->autoloadOrders = array();
 		$database = $this->wire('database');
 		// we use SELECT * so that this select won't be broken by future DB schema additions
 		// Currently: id, class, flags, data, with created added at sysupdate 7
@@ -760,7 +782,8 @@ class Modules extends WireArray {
 			$class = $row['class'];
 			$this->moduleIDs[$class] = $moduleID;
 			$this->moduleFlags[$moduleID] = $flags;
-			$loadSettings = ($flags & self::flagsAutoload) || ($flags & self::flagsDuplicate) || ($class == 'SystemUpdater');
+			$autoload = $flags & self::flagsAutoload;
+			$loadSettings = $autoload || ($flags & self::flagsDuplicate) || ($class == 'SystemUpdater');
 			
 			if($loadSettings) {
 				// preload config data for autoload modules since we'll need it again very soon
@@ -778,6 +801,14 @@ class Modules extends WireArray {
 				$this->createdDates[$moduleID] = $row['created']; 
 			}
 			
+			if($autoload && !empty($this->moduleInfoCache[$moduleID]['autoload'])) {
+				$autoload = $this->moduleInfoCache[$moduleID]['autoload'];
+				if(is_int($autoload) && $autoload > 1) {
+					// autoload specifies an order > 1, indicating it should load before others
+					$this->autoloadOrders[$class] = $autoload;
+				}
+			}
+			
 			unset($row['data']); // info we don't want stored in modulesTableCache
 			$this->modulesTableCache[$class] = $row;
 		}
@@ -793,12 +824,13 @@ class Modules extends WireArray {
 	 */
 	protected function load($path) {
 
+		$config = $this->wire('config');
 		$debugKey = $this->debug ? $this->debugTimerStart("load($path)") : null; 
 		$installed =& $this->modulesTableCache;
 		$modulesLoaded = array();
 		$modulesDelayed = array();
 		$modulesRequired = array();
-		$rootPath = $this->wire('config')->paths->root;
+		$rootPath = $config->paths->root;
 		$basePath = substr($path, strlen($rootPath));
 
 		foreach($this->findModuleFiles($path, true) as $pathname) {
@@ -814,7 +846,7 @@ class Modules extends WireArray {
 			$requires = array();
 			$name = $moduleName;
 			$moduleName = $this->loadModule($path, $pathname, $requires, $installed);
-			if(!$this->wire('config')->paths->get($name)) $this->setConfigPaths($name, dirname($basePath . $pathname));
+			if(!$config->paths->get($name)) $this->setConfigPaths($name, dirname($basePath . $pathname));
 			if(!$moduleName) continue;
 		
 			if(count($requires)) {
@@ -993,7 +1025,8 @@ class Modules extends WireArray {
 			} else if($autoload) {
 				$this->includeModuleFile($pathname, $basename);
 				if(!($info['flags'] & self::flagsDisabled)) {
-					$module = $this->newModule($basename);
+					$module = $this->refreshing ? parent::get($basename) : null;
+					if(!$module) $module = $this->newModule($basename);
 				}
 			}
 		}
@@ -1025,6 +1058,7 @@ class Modules extends WireArray {
 
 		static $startPath;
 		static $callNum = 0;
+		static $prependFiles = array();
 
 		$callNum++;
 		$config = $this->wire('config');
@@ -1048,6 +1082,11 @@ class Modules extends WireArray {
 		}
 
 		$files = array();
+		$autoloadOrders = null;
+		
+		if(count($this->autoloadOrders) && $path !== $config->paths->modules) {
+			$autoloadOrders = &$this->autoloadOrders;
+		}
 		
 		try {
 			$dir = new \DirectoryIterator($path); 
@@ -1065,7 +1104,6 @@ class Modules extends WireArray {
 
 			if(DIRECTORY_SEPARATOR != '/') {
 				$pathname = str_replace(DIRECTORY_SEPARATOR, '/', $pathname); 
-				$filename = str_replace(DIRECTORY_SEPARATOR, '/', $filename); 
 			}
 
 			if(strpos($pathname, '/.') !== false) {
@@ -1079,16 +1117,30 @@ class Modules extends WireArray {
 			}
 
 			// if the filename doesn't end with .module or .module.php, then stop and move onto the next
-			if(!strpos($filename, '.module')) continue; 
-			if(substr($filename, -7) !== '.module' && substr($filename, -11) !== '.module.php') {
-				continue; 
+			$extension = $file->getExtension();
+			if($extension !== 'module' && $extension !== 'php') continue;
+			list($moduleName, $extension) = explode('.', $filename, 2);
+			if($extension !== 'module'  && $extension !== 'module.php') continue;
+			
+			$pathname = str_replace($startPath, '', $pathname); 
+			
+			if($autoloadOrders !== null && isset($autoloadOrders[$moduleName])) {
+				$prependFiles[$pathname] = $autoloadOrders[$moduleName];
+			} else {
+				$files[] = $pathname;
 			}
-		
-			$files[] = str_replace($startPath, '', $pathname); 
 		}
-
+		
 		if($level == 0 && $dir !== null) {
-			if($cache && $cacheName) $cache->save($cacheName, implode("\n", $files), WireCache::expireNever); 
+			if(!empty($prependFiles)) {
+				// one or more non-core modules must be loaded first in a specific order
+				arsort($prependFiles);
+				$files = array_merge(array_keys($prependFiles), $files);
+				$prependFiles = array();
+			}
+			if($cache && $cacheName) {
+				$cache->save($cacheName, implode("\n", $files), WireCache::expireNever);
+			}
 		}
 
 		return $files;
@@ -1169,11 +1221,13 @@ class Modules extends WireArray {
 	 * This is the same as `$modules->get()` except that you can specify additional options to modify default behavior.
 	 * These are the options you can specify in the `$options` array argument:
 	 * 
-	 *  - `noPermissionCheck` (bool): Specify true to disable module permission checks (and resulting exception).
-	 *  - `noInstall` (bool): Specify true to prevent a non-installed module from installing from this request.
-	 *  - `noInit` (bool): Specify true to prevent the module from being initialized.
-	 *  - `noSubstitute` (bool): Specify true to prevent inclusion of a substitute module.
-	 *  - `noCache` (bool): Specify true to prevent module instance from being cached for later getModule() calls.
+	 *  - `noPermissionCheck` (bool): Specify true to disable module permission checks (and resulting exception). (default=false)
+	 *  - `noInstall` (bool): Specify true to prevent a non-installed module from installing from this request. (default=false)
+	 *  - `noInit` (bool): Specify true to prevent the module from being initialized. (default=false)
+	 *  - `noSubstitute` (bool): Specify true to prevent inclusion of a substitute module. (default=false)
+	 *  - `noCache` (bool): Specify true to prevent module instance from being cached for later getModule() calls. (default=false)
+	 *  - `noThrow` (bool): Specify true to prevent exceptions from being thrown on permission or fatal error. (default=false)
+	 *  - `returnError` (bool): Return an error message (string) on error, rather than null. (default=false)
 	 * 
 	 * If the module is not installed, but is installable, it will be installed, instantiated, and initialized.
 	 * If you don't want that behavior, call `$modules->isInstalled('ModuleName')` as a condition first, OR specify 
@@ -1181,69 +1235,110 @@ class Modules extends WireArray {
 	 * 
 	 * @param string|int $key Module name or database ID.
 	 * @param array $options Optional settings to change load behavior, see method description for details. 
-	 * @return Module|_Module|null Returns ready-to-use module or NULL if not found.
-	 * @throws WirePermissionException If module requires a particular permission the user does not have
+	 * @return Module|_Module|null|string Returns ready-to-use module or NULL|string if not found (string if `returnError` option used).
+	 * @throws WirePermissionException|\Exception If module requires a particular permission the user does not have
 	 * @see Modules::get()
 	 *
 	 */
 	public function getModule($key, array $options = array()) {
 	
-		if(empty($key)) return null;
 		$module = null;
 		$needsInit = false;
+		$error = '';
+		
+		if(empty($key)) {
+			return empty($options['returnError']) ? null : "No module specified";
+		}
 
 		// check for optional module ID and convert to classname if found
 		if(ctype_digit("$key")) {
-			if(!$key = array_search($key, $this->moduleIDs)) return null;
+			$moduleID = (int) $key;
+			if(!$key = array_search($key, $this->moduleIDs)) {
+				return empty($options['returnError']) ? null : "Unable to find module ID $moduleID";
+			}
 		} else {
 			$key = wireClassName($key, false);
 		}
-
 		
 		$module = parent::get($key);
-		if(!$module && empty($options['noSubstitute'])) {
-			if($this->isInstallable($key) && empty($options['noInstall'])) {
-				// module is on file system and may be installed, no need to substitute
+		
+		if(!$module) { 
+			if(empty($options['noSubstitute'])) {
+				if($this->isInstallable($key) && empty($options['noInstall'])) {
+					// module is on file system and may be installed, no need to substitute
+				} else {
+					$module = $this->getSubstituteModule($key, $options);
+					if($module) return $module; // returned module is ready to use
+				}
 			} else {
-				$module = $this->getSubstituteModule($key, $options);
-				if($module) return $module; // returned module is ready to use
+				$error = "Module '$key' not found and substitute not allowed (noSubstitute=true)";	
 			}
 		}
 		
 		if($module) {
-
 			// check if it's a placeholder, and if it is then include/instantiate/init the real module 
 			// OR check if it's non-singular, so that a new instance is created
 			if($module instanceof ModulePlaceholder || !$this->isSingular($module)) {
 				$placeholder = $module;
 				$class = $this->getModuleClass($placeholder);
-				if($module instanceof ModulePlaceholder) $this->includeModule($module);
-				$module = $this->newModule($class);
+				try {
+					if($module instanceof ModulePlaceholder) $this->includeModule($module);
+					$module = $this->newModule($class);
+				} catch(\Exception $e) {
+					if(empty($options['noThrow'])) throw $e;
+					return empty($options['returnError']) ? null : "Module '$key' - " . $e->getMessage();
+				}
 				// if singular, save the instance so it can be used in later calls
 				if($module && $this->isSingular($module) && empty($options['noCache'])) $this->set($key, $module);
 				$needsInit = true;
 			}
 
-		} else if(empty($options['noInstall']) && array_key_exists($key, $this->getInstallable())) {
-			// check if the request is for an uninstalled module 
-			// if so, install it and return it 
-			$module = $this->install($key);
-			$needsInit = true;
+		} else if(empty($options['noInstall'])) { 
+			// module was not available to get, see if we can install it
+			if(array_key_exists($key, $this->getInstallable())) {
+				// check if the request is for an uninstalled module 
+				// if so, install it and return it 
+				try {
+					$module = $this->install($key);
+				} catch(\Exception $e) {
+					if(empty($options['noThrow'])) throw $e;
+					if(!empty($options['returnError'])) return "Module '$key' install failed: " . $e->getMessage();
+				}
+				$needsInit = true;
+				if(!$module) $error = "Module '$key' not installed and install failed";
+			} else {
+				$error = "Module '$key' is not present or listed as installable";
+			}
+		} else {
+			$error = "Module '$key' is not present and not installable (noInstall=true)";
 		}
 		
-		if($module && empty($options['noPermissionCheck'])) {
+		if(!$module) {
+			if(!$error) $error = "Unable to get module '$key'";
+			return empty($options['returnError']) ? null : $error;
+		}
+		
+		if(empty($options['noPermissionCheck'])) {
+			// check that user has permission required to use module
 			if(!$this->hasPermission($module, $this->wire('user'), $this->wire('page'))) {
-				throw new WirePermissionException($this->_('You do not have permission to execute this module') . ' - ' . wireClassName($module));
+				$error = $this->_('You do not have permission to execute this module') . ' - ' . wireClassName($module);
+				if(empty($options['noThrow'])) throw new WirePermissionException($error);
+				return empty($options['returnError']) ? null : $error;
 			}
 		}
 
 		// skip autoload modules because they have already been initialized in the load() method
 		// unless they were just installed, in which case we need do init now
-		if($module && $needsInit) {
+		if($needsInit && empty($options['noInit'])) {
 			// if the module is configurable, then load it's config data
 			// and set values for each before initializing the module
-			if(empty($options['noInit'])) {
-				if(!$this->initModule($module, false)) $module = null;
+			try {
+				if(!$this->initModule($module, array('clearSettings' => false, 'throw' => true))) {
+					return empty($options['returnError']) ? null : "Module '$module' failed init";
+				}
+			} catch(\Exception $e) {
+				if(empty($options['noThrow'])) throw $e; 
+				return empty($options['returnError']) ? null : "Module '$module' throw Exception on init - " . $e->getMessage();
 			}
 		}
 	
@@ -1460,7 +1555,7 @@ class Modules extends WireArray {
 	 * #pw-internal Almost always recommend using findByPrefix() instead
 	 * 
 	 * @param string $selector Selector string
-	 * @return Modules WireArray of found modules, instantiated and ready-to-use
+	 * @return WireArray of found modules, instantiated and ready-to-use
 	 *	
 	 */
 	public function find($selector) {
@@ -1490,21 +1585,133 @@ class Modules extends WireArray {
 	 * ~~~~~
 	 * 
 	 * @param string $prefix Specify prefix, i.e. "Process", "Fieldtype", "Inputfield", etc.
-	 * @param bool $instantiate Specify true to return Module instances, or false to return class names (default=false)
+	 * @param bool|int $load Specify one of the following:
+	 *  - Boolean true to return array of instantiated modules.
+	 *  - Boolean false to return array of module names (default).
+	 *  - Integer 1 to return array of module info for each matching module.
+	 *  - Integer 2 to return array of verbose module info for each matching module. 
 	 * @return array Returns array of module class names or Module objects. In either case, array indexes are class names.
 	 * 
 	 */
-	public function findByPrefix($prefix, $instantiate = false) {
+	public function findByPrefix($prefix, $load = false) {
 		$results = array();
 		foreach($this as $key => $value) {
 			$className = wireClassName($value->className(), false);
 			if(strpos($className, $prefix) !== 0) continue;
-			if($instantiate) {
-				$results[$className] = $this->get($className);
+			if($load === 1) {
+				$results[$className] = $this->getModuleInfo($className); 
+			} else if($load === 2) {
+				$results[$className] = $this->getModuleInfoVerbose($className); 
+			} else if($load === true) {
+				$results[$className] = $this->getModule($className);
 			} else {
 				$results[$className] = $className;
 			}
 		}
+		return $results;
+	}
+
+	/**
+	 * Find modules by matching a property or properties in their module info 
+	 * 
+	 * @param string|array $selector Specify one of the following: 
+	 *  - Selector string to match module info. 
+	 *  - Array of [ 'property' => 'value' ] to match in module info (this is not a selector array). 
+	 *  - Name of property that will match module if not empty in module info. 
+	 * @param bool|int $load Specify one of the following: 
+	 *  - Boolean true to return array of instantiated modules.
+	 *  - Boolean false to return array of module names (default).
+	 *  - Integer 1 to return array of module info for each matching module.
+	 *  - Integer 2 to return array of verbose module info for each matching module. 
+	 * @return array Array of modules, module names or module info arrays, indexed by module name.
+	 * 
+	 */
+	public function findByInfo($selector, $load = false) {
+		
+		$selectors = null;
+		$infos = null;
+		$keys = null;
+		$results = array();
+		$verbose = $load === 2;
+		$properties = array();
+		$has = '';
+		
+		if(is_array($selector)) {
+			// find matching all values in array
+			$keys = $selector;
+			$properties = array_keys($keys);
+		} if(!ctype_alnum($selector) && Selectors::stringHasOperator($selector)) {
+			// find by selectors
+			$selectors = new Selectors($selector);
+			if(!$verbose) foreach($selectors as $s) {
+				$properties = array_merge($properties, $s->fields()); 
+			}
+		} else {
+			// find non-empty property
+			$has = $selector;
+			$properties[] = $has;
+		}
+	
+		// check if any verbose properties are part of the find
+		if(!$verbose) foreach($properties as $property) {
+			if(!in_array($property, $this->moduleInfoVerboseKeys)) continue;
+			$verbose = true;
+			break;
+		}
+		
+		$moduleInfoOptions = array(
+			'verbose' => $verbose,
+			'minify' => false
+		);
+		
+		foreach($this->getModuleInfo('*', $moduleInfoOptions) as $info) {
+			$isMatch = false;
+			
+			if($has) {
+				// simply check if property is non-empty
+				if(!empty($info[$has])) $isMatch = true;
+				
+			} else if($selectors) {
+				// match selector
+				$total = 0;
+				$n = 0;
+				foreach($selectors as $selector) {
+					$total++;
+					$values = array();
+					foreach($selector->fields() as $property) {
+						if(isset($info[$property])) $values[] = $info[$property];
+					}
+					if($selector->matches($values)) $n++;
+				}
+				if($n && $n === $total) $isMatch = true;
+				
+			} else if($keys) {
+				// match all values in $keys array
+				$n = 0;
+				foreach($keys as $key => $value) {
+					if($value === '*') {
+						// match any non-empty value
+						if(!empty($info[$key])) $n++;
+					} else {
+						// match exact value
+						if(isset($info[$key]) && $value == $info[$key]) $n++;
+					}
+				}
+				if($n && $n === count($keys)) $isMatch = true;
+			}
+			
+			if($isMatch) {
+				$moduleName = $info['name'];
+				if(is_int($load)) {
+					$results[$moduleName] = $info;
+				} else if($load === true) {
+					$results[$moduleName] = $this->getModule($moduleName);
+				} else {
+					$results[$moduleName] = $moduleName;
+				}
+			}
+		}
+		
 		return $results;
 	}
 
@@ -1861,6 +2068,7 @@ class Modules extends WireArray {
 		$success = false;
 		$reason = $this->isDeleteable($class, true); 
 		if($reason !== true) throw new WireException($reason); 
+		$siteModulesPath = $this->wire('config')->paths->siteModules;
 
 		$filename = $this->installable[$class];
 		$basename = basename($filename); 
@@ -1954,7 +2162,7 @@ class Modules extends WireArray {
 		foreach($files as $file) {
 			$file = "$path/$file";
 			if(!file_exists($file)) continue;
-			if(unlink($file)) {
+			if($this->wire('files')->unlink($file, $siteModulesPath)) {
 				$this->message("Removed file: $file", Notice::debug);
 			} else {
 				$this->error("Unable to remove file: $file", Notice::debug);
@@ -2372,13 +2580,14 @@ class Modules extends WireArray {
 	 * @param $className
 	 * @return array Only includes module info specified in the module file itself.
 	 *
-	 */
 	protected function getModuleInfoInternalSafe($className) {
 		// future addition
 		// load file, preg_split by /^\s*(public|private|protected)[^;{]+function\s*([^)]*)[^{]*{/
 		// isolate the one that starts has getModuleInfo in matches[1]
 		// parse data from matches[2]
+		return array();
 	}
+	 */
 
 	/**
 	 * Retrieve module info for system properties: PHP or ProcessWire
@@ -2429,19 +2638,20 @@ class Modules extends WireArray {
 	 *  - `name` (string): module class name.
 	 *  - `title` (string): module title.
 	 *  - `version` (int): module version.
-	 *  - `icon` (string): Optional icon name (excluding the "fa  - ") part.
+	 *  - `icon` (string): Optional icon name (excluding the "fa-") part.
 	 *  - `requires` (array): module names required by this module.
 	 *  - `requiresVersions` (array): required module versions–module name is key, value is array($operator, $version).
 	 *  - `installs` (array): module names that this module installs.
 	 *  - `permission` (string): permission name required to execute this module.
 	 *  - `autoload` (bool): true if module is autoload, false if not.
 	 *  - `singular` (bool): true if module is singular, false if not.
-	 *  - `created` (int): unix  - timestamp of date/time module added to system (for uninstalled modules, it is the file date).
+	 *  - `created` (int): unix-timestamp of date/time module added to system (for uninstalled modules, it is the file date).
 	 *  - `installed` (bool): is the module currently installed? (boolean, or null when not determined)
 	 *  - `configurable` (bool|int): true or positive number when the module is configurable.
 	 *  - `namespace` (string): PHP namespace that module lives in.
 	 *
-	 *  The following properties are also included when "verbose" mode is requested. When not in verbose mode, these properties are present but blank:
+	 * The following properties are also included when "verbose" mode is requested. When not in verbose mode, these 
+	 * properties are present but blank:
 	 *
 	 *  - `versionStr` (string): formatted module version string.
 	 *  - `file` (string): module filename from PW installation root, or false when it can't be found.
@@ -2449,10 +2659,11 @@ class Modules extends WireArray {
 	 *  - `author` (string): module author, when specified.
 	 *  - `summary` (string): summary of what this module does.
 	 *  - `href` (string): URL to module details (when specified).
-	 *  - `permissions` (array): permissions installed by this module, associative array ('permission  - name' => 'Description').
+	 *  - `permissions` (array): permissions installed by this module, associative array ('permission-name' => 'Description').
 	 *  - `page` (array): definition of page to create for Process module (see Process class)
 	 *
-	 *  The following properties appear only for "Process" modules. See the Process class for more details:
+	 * The following properties appear only for "Process" modules, and only if specified by module. 
+	 * See the Process class for more details:
 	 *
 	 *  - `nav` (array): navigation definition
 	 *  - `useNavJSON` (bool): whether the Process module provides JSON navigation
@@ -2467,12 +2678,17 @@ class Modules extends WireArray {
 	 * $moduleInfo = $modules->getModuleInfoVerbose('MarkupAdminDataTable');
 	 * ~~~~~
 	 * 
-	 * @param string|Module|int $class May be class name, module instance, or module ID. 
-	 *   Specify "*" or "all" to retrieve module info for all modules. 
+	 * @param string|Module|int $class Specify one of the following:
+	 *  - Module object instance 
+	 *  - Module class name (string)
+	 *  - Module ID (int)
+	 *  - To get info for ALL modules, specify `*` or `all`.
+	 *  - To get system information, specify `ProcessWire` or `PHP`.
+	 *  - To get a blank module info template, specify `info`.
 	 * @param array $options Optional options to modify behavior of what gets returned
-	 *  - `verbose` (bool): Makes the info also include additional properties (they will be usually blank without this option specified).
-	 *  - `noCache` (bool): prevents use of cache to retrieve the module info.
-	 *  - `noInclude` (bool): prevents include() of the module file, applicable only if it hasn't already been included.
+	 *  - `verbose` (bool): Makes the info also include verbose properties, which are otherwise blank. (default=false)
+	 *  - `minify` (bool): Remove non-applicable and properties that match defaults? (default=false, or true when getting `all`)
+	 *  - `noCache` (bool): prevents use of cache to retrieve the module info. (default=false)
 	 * @return array Associative array of module information
 	 * @throws WireException when a module exists but has no means of returning module info
 	 * @see Modules::getModuleInfoVerbose()
@@ -2480,15 +2696,28 @@ class Modules extends WireArray {
 	 *	
 	 */
 	public function getModuleInfo($class, array $options = array()) {
-	
-		if(!isset($options['verbose'])) $options['verbose'] = false; 
-		if(!isset($options['noCache'])) $options['noCache'] = false;
 		
+		$getAll = $class === '*' || $class === 'all';
+		$getSystem = $class === 'ProcessWire' || $class === 'PHP' || $class === 'info';
+		
+		$defaults = array(
+			'verbose' => false,
+			'minify' => $getAll,
+			'noCache' => false, 
+			'noInclude' => false,
+		);
+		
+		$options = array_merge($defaults, $options);
 		$info = array();
 		$module = $class;
-		$moduleName = $this->getModuleClass($module); 
-		$moduleID = (string) $this->getModuleID($module); // typecast to string for cache
+		$moduleName = '';
+		$moduleID = 0;
 		$fromCache = false;  // was the data loaded from cache?
+	
+		if(!$getAll && !$getSystem) {
+			$moduleName = $this->getModuleClass($module);
+			$moduleID = (string) $this->getModuleID($module); // typecast to string for cache
+		}
 		
 		static $infoTemplate = array(
 			// module database ID
@@ -2528,7 +2757,9 @@ class Modules extends WireArray {
 			// is the module currently installed? (boolean, or null when not determined)
 			'installed' => null,
 			// this is set to true when the module is configurable, false when it's not, and null when it's not determined
-			'configurable' => null, 
+			'configurable' => null,
+			// verbose mode only: true when module implements SearchableModule interface, or null|false when not
+			'searchable' => null, 
 			// namespace that module lives in (string)
 			'namespace' => null,
 			// verbose mode only: this is set to the module filename (from PW installation root), false when it can't be found, null when it hasn't been determined
@@ -2542,8 +2773,30 @@ class Modules extends WireArray {
 			// 'page' => array(), // page to create for Process module: see Process.php
 			// 'permissionMethod' => string or callable // method to call to determine permission: see Process.php
 			);
-	
-		if($module instanceof Module) {
+		
+		if($getAll) {
+			if(empty($this->moduleInfoCache)) $this->loadModuleInfoCache();
+			$modulesInfo = $this->moduleInfoCache;
+			if($options['verbose']) {
+				if(empty($this->moduleInfoCacheVerbose)) $this->loadModuleInfoCacheVerbose();
+				foreach($this->moduleInfoCacheVerbose as $moduleID => $moduleInfoVerbose) {
+					$modulesInfo[$moduleID] = array_merge($modulesInfo[$moduleID], $moduleInfoVerbose);
+				}
+			}
+			if(!$options['minify']) {
+				foreach($modulesInfo as $moduleID => $info) {
+					$modulesInfo[$moduleID] = array_merge($infoTemplate, $info); 
+				}
+			}
+			return $modulesInfo;
+
+		} else if($getSystem) {
+			// module is a system 
+			if($class === 'info') return $infoTemplate;
+			$info = $this->getModuleInfoSystem($module);
+			return $options['minify'] ? $info : array_merge($infoTemplate, $info);
+
+		} else if($module instanceof Module) {
 			// module is an instance
 			// $moduleName = method_exists($module, 'className') ? $module->className() : get_class($module); 
 			// return from cache if available
@@ -2556,28 +2809,12 @@ class Modules extends WireArray {
 				if(!count($info)) $info = $this->getModuleInfoInternal($module); 
 			}
 			
-		} else if($module == 'PHP' || $module == 'ProcessWire') {
-			// module is a system 
-			$info = $this->getModuleInfoSystem($module);
-			return array_merge($infoTemplate, $info);
-			
-		} else if($module === '*' || $module === 'all') {
-			if(empty($this->moduleInfoCache)) $this->loadModuleInfoCache();
-			$modulesInfo = $this->moduleInfoCache;
-			if($options['verbose']) {
-				if(empty($this->moduleInfoCacheVerbose)) $this->loadModuleInfoCacheVerbose();
-				foreach($this->moduleInfoCacheVerbose as $moduleID => $moduleInfoVerbose) {
-					$modulesInfo[$moduleID] = array_merge($modulesInfo[$moduleID], $moduleInfoVerbose);
-				}
-			}
-			return $modulesInfo;
-			
 		} else {
 			
 			// module is a class name or ID
 			if(ctype_digit("$module")) $module = $moduleName;
 			
-			// return from cache if available
+			// return from cache if available (as it almost always should be)
 			if(empty($options['noCache']) && !empty($this->moduleInfoCache[$moduleID])) {
 				$info = $this->moduleInfoCache[$moduleID];
 				$fromCache = true; 
@@ -2618,10 +2855,11 @@ class Modules extends WireArray {
 			return $info;
 		}
 		
-		$info = array_merge($infoTemplate, $info); 
+		if(!$options['minify']) $info = array_merge($infoTemplate, $info); 
 		$info['id'] = (int) $moduleID;
 
 		if($fromCache) {
+			// since cache is loaded at init(), this is the most common scenario
 
 			if($options['verbose']) { 
 				if(empty($this->moduleInfoCacheVerbose)) $this->loadModuleInfoCacheVerbose();
@@ -2635,7 +2873,7 @@ class Modules extends WireArray {
 			if(is_null($info['singular'])) $info['singular'] = false;
 			if(is_null($info['configurable'])) $info['configurable'] = false;
 			if(is_null($info['core'])) $info['core'] = false;
-			if(is_null($info['installed'])) $info['installed'] = true; 
+			if(is_null($info['installed'])) $info['installed'] = true;
 			if(is_null($info['namespace'])) $info['namespace'] = strlen(__NAMESPACE__) ? "\\" . __NAMESPACE__ . "\\" : "";
 			if(!empty($info['requiresVersions'])) $info['requires'] = array_keys($info['requiresVersions']);
 			if($moduleName == 'SystemUpdater') $info['configurable'] = 1; // fallback, just in case
@@ -2644,12 +2882,16 @@ class Modules extends WireArray {
 			// are already accounted for in the cached module info
 		
 		} else {
-			
-			// if $info[requires] or $info[installs] isn't already an array, make it one
+			// not from cache, only likely to occur when refreshing modules info caches
+
+			// if $info[requires] isn't already an array, make it one
 			if(!is_array($info['requires'])) {
 				$info['requires'] = str_replace(' ', '', $info['requires']); // remove whitespace
-				if(strpos($info['requires'], ',') !== false) $info['requires'] = explode(',', $info['requires']); 
-					else $info['requires'] = array($info['requires']); 
+				if(strpos($info['requires'], ',') !== false) {
+					$info['requires'] = explode(',', $info['requires']);
+				} else {
+					$info['requires'] = array($info['requires']);
+				}
 			}
 	
 			// populate requiresVersions
@@ -2667,14 +2909,18 @@ class Modules extends WireArray {
 			}
 
 			// what does it install?
+			// if $info[installs] isn't already an array, make it one
 			if(!is_array($info['installs'])) {
 				$info['installs'] = str_replace(' ', '', $info['installs']); // remove whitespace
-				if(strpos($info['installs'], ',') !== false) $info['installs'] = explode(',', $info['installs']); 
-					else $info['installs'] = array($info['installs']); 
+				if(strpos($info['installs'], ',') !== false) {
+					$info['installs'] = explode(',', $info['installs']);
+				} else {
+					$info['installs'] = array($info['installs']);
+				}
 			}
 
 			// misc
-			$info['versionStr'] = $this->formatVersion($info['version']); // versionStr
+			if($options['verbose']) $info['versionStr'] = $this->formatVersion($info['version']); // versionStr
 			$info['name'] = $moduleName; // module name
 
 			// module configurable?
@@ -2730,6 +2976,18 @@ class Modules extends WireArray {
 			// the file property is not stored in the verbose cache, but provided as a verbose key
 			$info['file'] = $this->getModuleFile($moduleName);
 			if($info['file']) $info['core'] = strpos($info['file'], $this->coreModulesDir) !== false; // is it core?
+		} else {
+			// module info may still contain verbose keys with undefined values	
+		}
+		
+		if($options['minify']) {
+			// when minify, any values that match defaults from infoTemplate are removed
+			if(!$options['verbose']) foreach($this->moduleInfoVerboseKeys as $key) unset($info[$key]); 
+			foreach($info as $key => $value) {
+				if(!array_key_exists($key, $infoTemplate)) continue;
+				if($value !== $infoTemplate[$key]) continue;
+				unset($info[$key]); 
+			}
 		}
 		
 		// if($this->debug) $this->message("getModuleInfo($moduleName) " . ($fromCache ? "CACHE" : "NO-CACHE")); 
@@ -2740,7 +2998,7 @@ class Modules extends WireArray {
 	/**
 	 * Returns a verbose array of information for a Module
 	 * 
-	 * This is the same as what's returned by `Modules::getModuleInfo()` except that it has the following additional properties:
+	 * This is the same as what’s returned by `Modules::getModuleInfo()` except that it has the following additional properties:
 	 * 
 	 *  - `versionStr` (string): formatted module version string.
 	 *  - `file` (string): module filename from PW installation root, or false when it can't be found.
@@ -2764,6 +3022,29 @@ class Modules extends WireArray {
 		$options['verbose'] = true; 
 		$info = $this->getModuleInfo($class, $options); 
 		return $info;
+	}
+
+	/**
+	 * Get just a single property of module info
+	 * 
+	 * @param Module|string $class Module instance or module name
+	 * @param string $property Name of property to get
+	 * @param array $options Additional options (see getModuleInfo method for options)
+	 * @return mixed|null Returns value of property or null if not found
+	 * 
+	 */
+	public function getModuleInfoProperty($class, $property, array $options = array()) {
+		if(isset($this->moduleInfoVerboseKeys[$property])) {
+			$info = $this->getModuleInfoVerbose($class, $options);
+			$info['verbose'] = true;
+		} else {
+			$info = $this->getModuleInfo($class, $options);
+		}
+		if(!isset($info[$property]) && empty($info['verbose'])) {
+			// try again, just in case we can find it in verbose data
+			$info = $this->getModuleInfoVerbose($class, $options);
+		}
+		return isset($info[$property]) ? $info[$property] : null;
 	}
 
 	/**
@@ -2936,6 +3217,27 @@ class Modules extends WireArray {
 	 */
 	public function getModuleConfigData($className) {
 		return $this->getConfig($className);
+	}
+
+	/**
+	 * Return the URL where the module can be edited, configured or uninstalled
+	 * 
+	 * If module is not installed, it just returns the URL to ProcessModule.
+	 * 
+	 * #pw-group-configuration
+	 * 
+	 * @param string|Module $className
+	 * @param bool $collapseInfo
+	 * @return string
+	 * 
+	 */
+	public function getModuleEditUrl($className, $collapseInfo = true) {
+		if(!is_string($className)) $className = $this->getModuleClass($className);
+		$url = $this->wire('config')->urls->admin . 'module/';
+		if(empty($className) || !$this->isInstalled($className)) return $url;
+		$url .= "edit/?name=$className";
+		if($collapseInfo) $url .= "&collapse_info=1";
+		return $url;
 	}
 	
 	/**
@@ -3561,6 +3863,7 @@ class Modules extends WireArray {
 					// we allow for option of no return statement in the method
 					$module = $this->getModule($moduleName);
 					$fields = $this->wire(new InputfieldWrapper());
+					$fields->setParent($form);
 					$_fields = $module->getModuleConfigInputfields($fields);
 					if($_fields instanceof InputfieldWrapper) $fields = $_fields;
 					unset($_fields);
@@ -3850,10 +4153,13 @@ class Modules extends WireArray {
 		if($this->wire('config')->systemVersion < 6) {
 			return;
 		}
+		$this->refreshing = true;
 		$this->clearModuleInfoCache();
+		$this->loadModulesTable();
 		foreach($this->paths as $path) $this->findModuleFiles($path, false); 
 		foreach($this->paths as $path) $this->load($path);
 		if($this->duplicates()->numNewDuplicates() > 0) $this->duplicates()->updateDuplicates(); // PR#1020
+		$this->refreshing = false;
 	}
 
 	/**
@@ -4639,7 +4945,7 @@ class Modules extends WireArray {
 	 * #pw-internal
 	 * 
 	 * @param Module|int|string $module Module object or class name
-	 * @return array Returns number of files that were added
+	 * @return int Returns number of files that were added
 	 * 
 	 */
 	public function loadModuleFileAssets($module) {
@@ -4717,7 +5023,7 @@ class Modules extends WireArray {
 	 * 
 	 * @param array|Wire|string $text
 	 * @param int $flags
-	 * @return $this
+	 * @return Modules|WireArray
 	 * 
 	 */
 	public function error($text, $flags = 0) {

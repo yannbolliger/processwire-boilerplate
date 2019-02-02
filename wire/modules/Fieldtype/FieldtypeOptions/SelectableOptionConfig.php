@@ -91,7 +91,7 @@ class SelectableOptionConfig extends Wire {
 				}
 			}
 
-			$removedOptionIDs = $this->manager->getRemovedOptionIDs($this->field); // identified for removal
+			$removedOptionIDs = $this->manager->getRemovedOptionIDs(); // identified for removal
 			if(count($removedOptionIDs)) {
 				// stuff in session for next request
 				$this->wire('session')->set($ns, 'removedOptionIDs', $removedOptionIDs);
@@ -111,7 +111,7 @@ class SelectableOptionConfig extends Wire {
 			// options not posted, check if there are any pending session activities
 
 			$removedOptionIDs = $this->wire('session')->get($ns, 'removedOptionIDs');
-			if(count($removedOptionIDs)) {
+			if(wireCount($removedOptionIDs)) {
 				
 				$f = $this->wire('modules')->get('InputfieldHidden');
 				$f->attr('name', '_delete_options'); 
@@ -213,11 +213,33 @@ class SelectableOptionConfig extends Wire {
 				$f->notes = $this->_('This feature is active since a value is always required.'); 
 			}
 			$inputfields->add($f); 
+			$inputfields->add($this->getInstructions());
 		}
 
 		// $this->manager->updateLanguages();
 
 		return $inputfields;
+	}
+	
+	protected function getInstructions() {
+		$field = $this->field;
+		$f = $this->wire('modules')->get('InputfieldMarkup');
+		$f->collapsed = Inputfield::collapsedYes;
+		$f->label = $this->_('API usage example'); 
+		$f->icon = 'code';
+		$f->value = 
+			"<pre><code>" .
+			"// " . $this->_('Output a single selection:') . 
+			"\necho '&lt;h2&gt;' . \$page-&gt;{$field->name}-&gt;title . '&lt;/h2&gt;';" . 
+			"\n\n// " . $this->_('Output multiple selection:') . 
+			"\nforeach(\$page-&gt;$field->name as \$item) {" .  
+			"\n  echo '&lt;li&gt;' . \$item-&gt;title . '&lt;/li&gt;';" . 
+			"\n}" . 
+			"</code></pre>" . 
+			"<p class='detail'>" . 
+			$this->_('If you want to output values rather than titles, then replace “title” with “value” in the examples above.') . 
+			"</p>";
+		return $f;
 	}
 }
 

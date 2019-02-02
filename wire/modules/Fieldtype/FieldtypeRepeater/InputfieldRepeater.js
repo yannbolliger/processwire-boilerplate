@@ -48,7 +48,7 @@ function InputfieldRepeater($) {
 			if(source == 'InputfieldRepeaterItemEdit' || source == 'InputfieldRepeaterItemAdd') {
 				event.stopPropagation();
 				var $r = $(this).find(".InputfieldRepeater");
-				if($r.length) initRepeater($r);
+				if($r.length) $r.each(function() { initRepeater($(this)) });
 				return;
 			}
 		}
@@ -93,6 +93,7 @@ function InputfieldRepeater($) {
 					//$item.toggleClass('InputfieldStateCollapsed', 100);
 				}
 				$item.addClass('InputfieldRepeaterDeletePending');
+				$item.closest('.Inputfield').addClass('InputfieldStateChanged');
 			}
 			$header.find('.InputfieldRepeaterItemControls').css('background-color', $header.css('background-color'));
 		}
@@ -174,7 +175,8 @@ function InputfieldRepeater($) {
 				$input.val('-1');
 			} else {
 				$this.removeClass(toggleOff).addClass(toggleOn);
-				$item.removeClass('InputfieldRepeaterUnpublished InputfieldRepeaterOff');
+				$item.removeClass('InputfieldRepeaterUnpublished InputfieldRepeaterOff')
+					.addClass('InputfieldRepeaterWasUnpublished');
 				$input.val('1');
 			}
 			checkMinMax($item.closest('.InputfieldRepeater'));
@@ -217,7 +219,7 @@ function InputfieldRepeater($) {
 		var pageID = $repeater.attr('data-page'); // $("#Inputfield_id").val();
 		var itemID = parseInt($item.attr('data-page'));
 		var repeaterID = $repeater.attr('id');
-		var fieldName = repeaterID.replace('wrap_Inputfield_', '');
+		var fieldName = repeaterID.replace('wrap_Inputfield_', '').replace('_LPID' + pageID, '');
 		var ajaxURL = ProcessWire.config.InputfieldRepeater.editorUrl + '?id=' + pageID + '&field=' + fieldName + '&repeater_edit=' + itemID;
 		var $spinner = $item.find('.InputfieldRepeaterDrag');
 		var $inputfields = $loaded.closest('.Inputfields');
@@ -226,7 +228,7 @@ function InputfieldRepeater($) {
 		if($repeater.hasClass('InputfieldNoDraft')) ajaxURL += '&nodraft=1';	
 
 		$spinner.removeClass('fa-arrows').addClass('fa-spin fa-spinner');
-		repeaterID = repeaterID.replace(/_repeater\d+$/, '');
+		repeaterID = repeaterID.replace(/_repeater\d+$/, '').replace('_LPID' + pageID, '');
 
 		$.get(ajaxURL, function(data) {
 			var $inputs = $(data).find('#' + repeaterID + ' > ' +
@@ -238,7 +240,7 @@ function InputfieldRepeater($) {
 			$item.removeClass('InputfieldRepeaterItemLoading');
 			InputfieldsInit($inputfields);
 
-			var $repeaters = $inputs.filter('.InputfieldRepeater');
+			var $repeaters = $inputs.find('.InputfieldRepeater');
 			if($repeaters.length) $repeaters.each(function() {
 				initRepeater($(this));
 			});
@@ -324,7 +326,7 @@ function InputfieldRepeater($) {
 		}
 
 		// determine which page IDs we don't accept for new items (because we already have them rendered)
-		var $unpublishedItems = $inputfields.find('.InputfieldRepeaterUnpublished:not(.InputfieldRepeaterMinItem)');
+		var $unpublishedItems = $inputfields.find('.InputfieldRepeaterUnpublished, .InputfieldRepeaterWasUnpublished'); // :not(.InputfieldRepeaterMinItem)');
 		if($unpublishedItems.length) {
 			ajaxURL += '&repeater_not=';
 			$unpublishedItems.each(function() {
@@ -345,6 +347,11 @@ function InputfieldRepeater($) {
 			initRepeater($addItem);
 			$addItem.unwrap(); // unwrap div once item initialized
 			$addItem.find('.Inputfield').trigger('reloaded', [ 'InputfieldRepeaterItemAdd' ]);
+			if(cloneID) {
+				$addItem.find('.Inputfield').trigger('cloned', [ 'InputfieldRepeaterItemAdd' ]);
+				// next line can remove 9/2019, as 'cloned' support will have been in InputfieldTable for awhile
+				$addItem.find('.InputfieldTableRowID').val(0); 
+			}
 			$addItem.find('.InputfieldRepeaterSort').val($inputfields.children().length);
 			$('html, body').animate({
 				scrollTop: $addItem.offset().top
@@ -448,7 +455,7 @@ function InputfieldRepeater($) {
 	}
 
 	/**
-	 * Given an InputfieldRepeaterItem update the label consistent with any present formatting sting
+	 * Given an InputfieldRepeaterItem update the label consistent with any present formatting string
 	 * 
 	 * Primarily adjusts item count(s) and allowed for {secondary} text appearance
 	 * 
@@ -498,9 +505,6 @@ function InputfieldRepeater($) {
 		var prevDepth = parseInt($depth.val());
 		var left = ui.position.left;
 	
-		// AdminThemeDefault has something different going on with the left positions, so we adjust for that here
-		if(!isAdminDefault) left -= depthSize;
-		
 		if(left < 0) {
 			depth = prevDepth - Math.round(Math.abs(left) / depthSize);
 			// console.log('decrease depth to: ' + depth);
@@ -554,6 +558,7 @@ function InputfieldRepeater($) {
 				$item.css('margin-left', targetLeft + 'px');
 			}
 		});
+		$inputfieldRepeater.children('.InputfieldContent').css('position', 'relative');
 	}
 
 	/**

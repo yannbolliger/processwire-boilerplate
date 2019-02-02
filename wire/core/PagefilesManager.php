@@ -231,6 +231,40 @@ class PagefilesManager extends Wire {
 	}
 
 	/**
+	 * Copy/import files from given path into the page’s files directory
+	 * 
+	 * #pw-group-manipulation
+	 * 
+	 * @param string $fromPath Path to copy/import files from. 
+	 * @param bool $move Move files into directory rather than copy?
+	 * @return int Number of files/directories copied.
+	 * @since 3.0.114
+	 * 
+	 */
+	public function importFiles($fromPath, $move = false) {
+		return $this->_copyFiles($fromPath, $this->path(), $move); 
+	}
+
+	/**
+	 * Replace all page’s files with those from given path
+	 * 
+	 * #pw-group-manipulation
+	 * 
+	 * @param string $fromPath
+	 * @param bool $move Move files to destination rather than copy? (default=false)
+	 * @return int Number of files/directories copied.
+	 * @throws WireException if given a path that does not exist.
+	 * @since 3.0.114
+	 * 
+	 * 
+	 */
+	public function replaceFiles($fromPath, $move = false) {
+		if(!is_dir($fromPath)) throw new WireException("Path does not exist: $fromPath"); 
+		$this->emptyPath();
+		return $this->_copyFiles($fromPath, $this->path(), $move);
+	}
+
+	/**
 	 * Recursively move all files managed by this PagefilesManager into a new path.
 	 * 
 	 * #pw-group-manipulation
@@ -284,16 +318,16 @@ class PagefilesManager extends Wire {
 		$errors = 0;
 		if($recursive) {
 			// clear out path and everything below it
-			if(!wireRmdir($path, true)) $errors++;
+			if(!$this->wire('files')->rmdir($path, true, true)) $errors++;
 			if(!$rmdir) $this->_createPath($path); 
 		} else {
 			// only clear out files in path
 			foreach(new \DirectoryIterator($path) as $file) {
 				if($file->isDot() || $file->isDir()) continue; 
-				if(!unlink($file->getPathname())) $errors++;
+				if(!$this->wire('files')->unlink($file->getPathname(), true)) $errors++;
 			}
 			if($rmdir) {
-				@rmdir($path); // will not be successful if other dirs within it
+				$this->wire('files')->rmdir($path, false, true); // will not be successful if other dirs within it
 			}
 		}
 		return $errors === 0;
@@ -572,15 +606,23 @@ class PagefilesManager extends Wire {
 	}
 
 	/**
-	 * Return a path where temporary files can be stored.
+	 * Return a path where temporary files can be stored unique to this ProcessWire instance
 	 * 
 	 * @return string
 	 *
 	 */
 	public function getTempPath() {
 		static $wtd = null;
-		if(is_null($wtd)) $wtd = $this->wire(new WireTempDir($this->className() . $this->page->id));
+		if(is_null($wtd)) {
+			$wtd = new WireTempDir();
+			$this->wire($wtd);
+			$wtd->setMaxAge(3600);
+			$name = $wtd->createName('PFM');
+			$wtd->create($name);
+		}
 		return $wtd->get();
+		// if(is_null($wtd)) $wtd = $this->wire(new WireTempDir($this->className() . $this->page->id));
+		// return $wtd->get();
 	}
-
+	
 }

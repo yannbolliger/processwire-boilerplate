@@ -77,6 +77,24 @@ class WireCache extends Wire {
 	 * 
 	 */
 	const dateFormat = 'Y-m-d H:i:s';
+
+	/**
+	 * String names of expire constants
+	 * 
+	 * @var array
+	 * 
+	 */
+	protected $expireNames = array(
+		'now' => self::expireNow,
+		'hour' => self::expireHourly,
+		'hourly' => self::expireHourly,
+		'day' => self::expireDaily,
+		'daily' => self::expireDaily,
+		'week' => self::expireWeekly,
+		'weekly' => self::expireWeekly,
+		'month' => self::expireMonthly,
+		'monthly' => self::expireMonthly,
+	);
 	
 	/**
 	 * Preloaded cache values, indexed by cache name
@@ -508,16 +526,20 @@ class WireCache extends Wire {
 				$expire = time() + self::expireDaily;
 			}
 			
-		} else if(is_array($expire)) { 
+		} else if(is_array($expire)) {
 			// expire value already prepared by a previous call, just return it
 			if(isset($expire['selector']) && isset($expire['expire'])) {
 				return $expire;
 			}
 
+		} else if(is_string($expire) && isset($this->expireNames[$expire])) {
+			// named expiration constant like "hourly", "daily", etc. 
+			$expire = $this->expireNames[$expire];
+
 		} else if(in_array($expire, array(self::expireNever, self::expireSave))) {
 			// good, we'll take it as-is
 			return $expire;
-			
+
 		} else if(is_string($expire) && Selectors::stringHasSelector($expire)) {
 			// expire when page matches selector
 			return array(
@@ -584,6 +606,7 @@ class WireCache extends Wire {
 			$query = $this->wire('database')->prepare($sql, "cache.delete($name)"); 
 			$query->bindValue(':name', $name); 
 			$query->execute();
+			$query->closeCursor();
 			$success = true; 
 			$this->log($this->_('Cleared cache') . ' - ' . $name);
 		} catch(\Exception $e) {
@@ -790,7 +813,7 @@ class WireCache extends Wire {
 	 * Run maintenance for a template that was just saved or deleted
 	 *
 	 * @param Template $template
-	 * @return bool
+	 * @return bool Returns true if any caches were deleted, false if not
 	 *
 	 */
 	protected function maintenanceTemplate(Template $template) {
@@ -804,6 +827,8 @@ class WireCache extends Wire {
 		$result = $query->execute();
 		$qty = $result ? $query->rowCount() : 0;
 		if($qty) $this->log(sprintf($this->_('Maintenance expired %d cache(s) for saved template'), $qty));
+		
+		return $qty > 0;
 	}
 	
 	/**

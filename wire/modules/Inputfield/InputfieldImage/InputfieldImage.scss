@@ -3,6 +3,7 @@ $deleteColor: #e83561;
 $errorColor: #FC3A3F;
 $gridMargin: 0 0.6em 0.6em 0;
 $itemPadding: 0.4em;
+$focusPointCircleSize: 40px;
 
 
 .InputfieldImage {
@@ -85,6 +86,7 @@ $itemPadding: 0.4em;
 	padding: $itemPadding;
 	vertical-align: top;
 	border: 1px dashed transparent; // to have the placeholder item the same size
+	
 
 	&__overflow {
 		width: 100%;
@@ -101,10 +103,11 @@ $itemPadding: 0.4em;
 			position: absolute;
 			top: 50%;
 			left: 50%;
-			transition: transform ease .3s;
+			//transition: transform ease .3s;
 			-ms-transform: translate3d(-50%, -50%, 0);
 			transform: translate3d(-50%, -50%, 0);
 		}
+		
 	}
 
 	&.gridImagePlaceholder {
@@ -160,6 +163,10 @@ $itemPadding: 0.4em;
 		font-size: 1.3em;
 		cursor: move;
 		text-shadow: 0px 0px 7px rgba(#3eb998, .7);
+		&.pw-resizing {
+			text-shadow: none;
+			background: rgba(0,0,0,0.7);
+		}
 	}
 
 	&__progress {
@@ -460,19 +467,32 @@ $itemPadding: 0.4em;
 		& > div {
 			// Fix for Firefox not respecting aspect ratio on images
 			width: 100%;
+			position: relative;
 		}
-
 		.detail {
-			display: block;
 			text-align: center;
-			opacity: 0;
 			margin-top: 2px;
 		}
-		&:hover .detail {
+		.detail-upload {
+			display: block;
+			opacity: 0;
+		}
+		.detail-focus {
+			display: none;
+		}
+		&:hover .detail-upload {
 			opacity: 0.7;
 		}
+		& > div.focusWrap .detail-upload {
+			display: none;
+		}
+		& > div.focusWrap .detail-focus {
+			display: block;
+			opacity: 0.7;
+		}
+		
 	}
-
+	
 	&__replace img {
 		// dragging new img on top of old one
 		opacity: 0.5;
@@ -533,8 +553,45 @@ $itemPadding: 0.4em;
 			margin-bottom: 0.5em;
 		}
 	}
+	
+	.InputfieldFileDescription + .InputfieldFileTags {
+		margin-top: 0.5em;
+	}
 
 }
+
+.gridImage__overflow .focusArea,
+.InputfieldImageEdit .focusArea {
+	display: none;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	color: #fff;
+	cursor: default;
+
+	&.focusActive {
+		display: block;
+		overflow: hidden;
+	}
+
+	.focusCircle {
+		cursor: move;
+		width: $focusPointCircleSize;
+		height: $focusPointCircleSize;
+		margin: ($focusPointCircleSize * -1 / 2 + 0px) !important;
+		// border: 3px solid #fff;
+		// background-color: rgba(255,255,255,0.3);
+		border: 3px solid #EB1D61;
+		border-radius: 50%;
+		background-color: rgba(255, 255, 255, 0.6);
+		background-image: url(data:image/gif;base64,R0lGODlhBAAEAIAAAOsdYQAAACH5BAAAAAAALAAAAAAEAAQAAAIEhI8JBQA7); // 4x4 px magenta
+		background-position: 15px 15px;
+		background-repeat: no-repeat;
+	}
+}
+
 
 .InputfieldImage .ImageData {
 	// element in a .gridImage item that contains the details and editable content
@@ -660,6 +717,8 @@ $itemPadding: 0.4em;
 			& > img {
 				display: block;
 				position: static !important;
+				top: 0;
+				left: 0;
 				transition: none;
 				-ms-transform: none;
 				transform: none;
@@ -667,6 +726,12 @@ $itemPadding: 0.4em;
 				max-width: 100% important;
 				height: initial !important;
 				cursor: move;
+			}
+			
+			& > .focusArea {
+				position: absolute;
+				top: 10px; // to match padding of __overflow
+				left: 10px;
 			}
 		}
 
@@ -817,6 +882,11 @@ $itemPadding: 0.4em;
 					height: auto !important;
 				}
 				
+				> .focusArea { // #728
+					top: 0;
+					left: 0;
+				}
+				
 			}
 			.ImageData {
 				padding: 0;
@@ -834,4 +904,9 @@ $itemPadding: 0.4em;
 			}
 		} // .gridImage
 	} // .InputfieldImageNarrow
-} // .InputfieldImageEditll
+} // .InputfieldImageEditAll
+
+.InputfieldFileActionNote {
+	display: none;
+	white-space: nowrap;
+}

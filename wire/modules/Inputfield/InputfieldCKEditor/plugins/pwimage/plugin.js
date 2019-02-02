@@ -104,6 +104,12 @@
 		var nodeParentName = nodeParent.$.nodeName.toUpperCase(); 
 		var nodeGrandparentName = nodeGrandparent ? nodeGrandparent.$.nodeName.toUpperCase() : '';
 	
+		if(typeof ckeGetProcessWireConfig != "undefined") {
+			// note: ckeGetProcessWireConfig not yet present in front-end editor
+			var pwCkeSettings = ckeGetProcessWireConfig(editor);
+			if(pwCkeSettings && pwCkeSettings['pwAssetPageID']) page_id = pwCkeSettings['pwAssetPageID'];
+		}
+	
 		selection.lock();
 		editor.lockSelection();
 	
@@ -179,7 +185,7 @@
 			// when iframe loads, pull the contents into $i 
 			var $i = $iframe.contents();
 		
-			if($i.find("#selected_image").size() > 0) {
+			if($i.find("#selected_image").length > 0) {
 				// if there is a #selected_image element on the page...
 
 				var buttons = [
@@ -208,7 +214,7 @@
 								// note: class is added to figureWrapper (rather than <img>) when this is a caption
 								if(caption === false) $insertHTML.addClass(cls); 
 								
-								if(width > 0) $insertHTML.attr('width', width); 
+								if(width > 0 && $img.attr('data-nosize') != '1') $insertHTML.attr('width', width);
 								
 								if($linkWrapper) {	
 									// img was wrapped in an <a>...</a> and/or <figure>
@@ -245,11 +251,13 @@
 								}
 						
 								// select the entire element surrounding the image so that we replace it all
-								editor.unlockSelection(); 
-								selection.unlock();
 								if(nodeGrandparentName === 'FIGURE') {
+									editor.unlockSelection();
+									selection.unlock();
 									selection.selectElement(nodeGrandparent);
 								} else if(nodeParentName === "A" || nodeParentName == 'FIGURE') {
+									editor.unlockSelection();
+									selection.unlock();
 									// @todo does not work in inline mode for some reason
 									selection.selectElement(nodeParent);
 								}

@@ -9,7 +9,7 @@
 
 .asmOptionDisabled {
 	/* disabled options in new select */
-	color: #999; 
+	color: #999 !important; 
 }
 
 .asmHighlight {
@@ -91,11 +91,16 @@
 	display: inline-block;
 }
 
-.asmListItemEdit .ui-icon {
+.asmListItemEdit .ui-icon,
+.asmListItemEdit .asmIcon {
 	/* hide the icon */
 	float: none; 
 	display: none; 
 }
+
+	.asmListItemEdit a:hover .asmIcon {
+		display: inline-block;
+	}
 	.asmListItemEdit a:hover .ui-icon {
 		/* display the icon when hovered on the edit label */
 		display: inline; 
@@ -130,3 +135,16 @@ span.asmListItemDesc {
 .asmListItemDeleted span {
 	text-decoration: line-through; 
 }
+
+span.asmFieldsetIndent {
+	float: left;
+	width: 15px;
+	height: 5px;
+}
+
+.asmFieldset, 
+.pw-content .asmFieldset,
+#content .asmFieldset {
+	font-weight: bold;
+}
+

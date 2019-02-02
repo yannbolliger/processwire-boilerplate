@@ -179,7 +179,7 @@ class WireUpload extends Wire {
 	public function __destruct() {
 		// cleanup files that were backed up when overwritten
 		foreach($this->overwrittenFiles as $bakDestination => $destination) {
-			if(is_file($bakDestination)) unlink($bakDestination);
+			if(is_file($bakDestination)) $this->wire('files')->unlink($bakDestination);
 		}
 	}
 
@@ -287,7 +287,21 @@ class WireUpload extends Wire {
 		$filename = rawurldecode($filename); // per #1487
 		$dir = $this->getUploadDir();
 		$tmpName = tempnam($dir, wireClassName($this, false));
-		file_put_contents($tmpName, file_get_contents('php://input')); 
+	
+		// upload without chunks:
+		// file_put_contents($tmpName, file_get_contents('php://input'));
+	
+		// upload with chunks (via @BitPoet processwire-requests#233)
+		$uploadData = fopen("php://input", "rb");
+		$saveFile = fopen($tmpName, "wb");
+		$chunkSize = 8192 * 1024; // about 8 megabytes
+		while(!feof($uploadData)) {
+			$chunk = fread($uploadData, $chunkSize); 
+			if($chunk !== false) fwrite($saveFile, $chunk);
+		}
+		fclose($saveFile);
+		fclose($uploadData);
+		
 		$filesize = is_file($tmpName) ? filesize($tmpName) : 0;
 		$error = $filesize ? UPLOAD_ERR_OK : UPLOAD_ERR_NO_FILE;
 
@@ -406,6 +420,7 @@ class WireUpload extends Wire {
 		if($this->lowercase) $value = function_exists('mb_strtolower') ? mb_strtolower($value) : strtolower($value);
 		$value = $this->wire('sanitizer')->filename($value, Sanitizer::translate); 
 		$value = trim($value, "_");
+		if(!strlen($value)) return false;
 
 		$p = pathinfo($value);
 		if(!isset($p['extension'])) return false;
@@ -433,37 +448,64 @@ class WireUpload extends Wire {
 	 */
 	protected function saveUpload($tmp_name, $filename, $ajax = false) {
 
-		if(!$this->checkDestinationPath()) return false; 
+		if(!$this->checkDestinationPath()) return false;
+		
+		$success = false;
+		$error = '';
 		$filename = $this->getTargetFilename($filename); 
+		$_filename = $filename;
 		$filename = $this->validateFilename($filename);
-		if($this->lowercase) $filename = strtolower($filename); 
+		
+		if(!$filename && $this->name) {
+			// if filename doesn't validate, generate filename based on field name
+			$ext = pathinfo($_filename, PATHINFO_EXTENSION);
+			$filename = $this->name . ".$ext";
+			$filename = $this->validateFilename($filename);
+			$this->overwrite = false;
+		}
+		
 		$destination = $this->destinationPath . $filename;
-		$p = pathinfo($destination); 
-		$exists = file_exists($destination); 
-
-		if(!$this->overwrite && $filename != $this->overwriteFilename) {
-			// overwrite not allowed, so find a new name for it
-			$destination = $this->getUniqueFilename($destination); 
-			$filename = basename($destination); 
+		$p = pathinfo($destination);
+	
+		if($filename) {
 			
-		} else if($exists && $this->overwrite) {
-			// file already exists in destination and will be overwritten
-			// here we back it up temporarily, and we don't remove the backup till __destruct()
-			$bakName = $filename; 
-			do {
-				$bakName = "_$bakName";
-				$bakDestination = $this->destinationPath . $bakName;
-			} while(file_exists($bakDestination)); 
-			rename($destination, $bakDestination);
-			$this->overwrittenFiles[$bakDestination] = $destination;
+			if($this->lowercase) {
+				$filename = function_exists('mb_strtolower') ? mb_strtolower($filename) : strtolower($filename);
+			}
+			
+			$exists = file_exists($destination);
+
+			if(!$this->overwrite && $filename != $this->overwriteFilename) {
+				// overwrite not allowed, so find a new name for it
+				$destination = $this->getUniqueFilename($destination);
+				$filename = basename($destination);
+
+			} else if($exists && $this->overwrite) {
+				// file already exists in destination and will be overwritten
+				// here we back it up temporarily, and we don't remove the backup till __destruct()
+				$bakName = $filename;
+				do {
+					$bakName = "_$bakName";
+					$bakDestination = $this->destinationPath . $bakName;
+				} while(file_exists($bakDestination));
+				rename($destination, $bakDestination);
+				$this->overwrittenFiles[$bakDestination] = $destination;
+			}
+
+			if($ajax) {
+				$success = @rename($tmp_name, $destination);
+			} else {
+				$success = move_uploaded_file($tmp_name, $destination);
+			}
+		} else {
+			$error = "Filename does not validate";
 		}
 
-		if($ajax) $success = @rename($tmp_name, $destination);
-			else $success = move_uploaded_file($tmp_name, $destination);
-
 		if(!$success) {
-			$this->error("Unable to move uploaded file to: $destination");
-			if(is_file($tmp_name)) @unlink($tmp_name); 
+			if(!$destination || !$filename) $destination = $this->destinationPath . 'invalid-filename';
+			if(!$error) $error = "Unable to move uploaded file to: $destination";
+			$this->error($error); 
+			if(is_file($tmp_name)) $this->wire('files')->unlink($tmp_name); 
 			return false;
 		}
 
@@ -505,7 +547,7 @@ class WireUpload extends Wire {
 		} catch(\Exception $e) {
 			$this->error($e->getMessage());
 			$this->wire('files')->rmdir($tmpDir, true);
-			unlink($zipFile); 
+			$this->wire('files')->unlink($zipFile);
 			return $files;
 		}
 	
@@ -516,7 +558,7 @@ class WireUpload extends Wire {
 			$pathname = $tmpDir . $file;
 
 			if(!$this->isValidUpload($file, filesize($pathname), UPLOAD_ERR_OK)) {
-				@unlink($pathname); 
+				$this->wire('files')->unlink($pathname, $tmpDir); 
 				continue; 
 			}
 
@@ -546,12 +588,12 @@ class WireUpload extends Wire {
 				$this->completedFilenames[] = basename($destination); 
 				$cnt++; 
 			} else {
-				@unlink($pathname); 
+				$this->wire('files')->unlink($pathname, $tmpDir);
 			}
 		}
 
 		$this->wire('files')->rmdir($tmpDir, true); 
-		@unlink($zipFile); 
+		$this->wire('files')->unlink($zipFile);
 
 		if(!$cnt) return false; 
 		return true; 	
@@ -722,7 +764,7 @@ class WireUpload extends Wire {
 	 * 
 	 * @param array|Wire|string $text
 	 * @param int $flags
-	 * @return $this
+	 * @return Wire|WireUpload
 	 * 
 	 */
 	public function error($text, $flags = 0) {

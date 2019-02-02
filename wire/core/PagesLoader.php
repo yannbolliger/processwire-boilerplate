@@ -115,7 +115,7 @@ class PagesLoader extends Wire {
 		if(!empty($options['lazy'])) return false;
 		
 		$value = false;
-		$filter = empty($options['findOne']);
+		$filter = empty($options['findAll']);
 		
 		if(is_array($selector)) {
 
@@ -335,6 +335,7 @@ class PagesLoader extends Wire {
 			$pages = $this->pages->newPageArray($loadOptions);
 		}
 
+		$pageFinder->getPageArrayData($pages); 
 		$pages->setTotal($total);
 		$pages->setLimit($limit);
 		$pages->setStart($start);
@@ -446,6 +447,7 @@ class PagesLoader extends Wire {
 	 * - findTemplates: boolean, default=true. Determine which templates will be used (when no template specified) for more specific autojoins.
 	 * - pageClass: string, default=auto-detect. Class to instantiate Page objects with. Leave blank to determine from template.
 	 * - pageArrayClass: string, default=PageArray. PageArray-derived class to store pages in (when 'getOne' is false).
+	 * - pageArray: PageArray, default=null. Optional predefined PageArray to populate to. 
 	 * - page (Page|null): Existing Page object to populate (also requires the getOne option to be true). (default=null)
 	 * - caller (string): Name of calling function, for debugging purposes (default=blank).
 	 *
@@ -483,6 +485,7 @@ class PagesLoader extends Wire {
 			'joinFields' => array(),
 			'page' => null, 
 			'pageClass' => '',  // blank = auto detect
+			'pageArray' => null, // PageArray to populate to
 			'pageArrayClass' => 'PageArray',
 			'caller' => '', 
 		);
@@ -639,16 +642,22 @@ class PagesLoader extends Wire {
 			if($joinSortfield) $query->leftjoin('pages_sortfields ON pages_sortfields.pages_id=pages.id');
 			$query->groupby('pages.id');
 
-			if($options['autojoin'] && $this->autojoin) foreach($fields as $field) {
-				if(!empty($options['joinFields']) && in_array($field->name, $options['joinFields'])) {
-					// joinFields option specified to force autojoin this field
-				} else {
-					if(!($field->flags & Field::flagAutojoin)) continue; // autojoin not enabled for field
-					if($fields instanceof Fields && !($field->flags & Field::flagGlobal)) continue; // non-fieldgroup, autojoin only if global flag is set
+			if($options['autojoin'] && $this->autojoin) {
+				foreach($fields as $field) {
+					if(!empty($options['joinFields']) && in_array($field->name, $options['joinFields'])) {
+						// joinFields option specified to force autojoin this field
+					} else {
+						// check if autojoin not enabled for field
+						if(!($field->flags & Field::flagAutojoin)) continue; 
+						// non-fieldgroup, autojoin only if global flag is set
+						if($fields instanceof Fields && !($field->flags & Field::flagGlobal)) continue; 
+					}
+					$table = $database->escapeTable($field->table);
+					// check autojoin not allowed, otherwise merge in the autojoin query
+					if(!$field->type || !$field->type->getLoadQueryAutojoin($field, $query)) continue; 
+					// complete autojoin
+					$query->leftjoin("$table ON $table.pages_id=pages.id"); // QA
 				}
-				$table = $database->escapeTable($field->table);
-				if(!$field->type || !$field->type->getLoadQueryAutojoin($field, $query)) continue; // autojoin not allowed
-				$query->leftjoin("$table ON $table.pages_id=pages.id"); // QA
 			}
 
 			if(!is_null($parent_id)) $query->where("pages.parent_id=" . (int) $parent_id);
@@ -810,9 +819,9 @@ class PagesLoader extends Wire {
 		// if page is already loaded and cache allowed, then get the path from it
 		if($options['useCache'] && $page = $this->pages->getCache($id)) {
 			/** @var Page $page */
-			if($languages) $languages->setLanguage($language);
+			if($languageID) $languages->setLanguage($language);
 			$path = $page->path();
-			if($languages) $languages->unsetLanguage();
+			if($languageID) $languages->unsetLanguage();
 			return $path;
 
 		} else if($id == $homepageID && $languages && !$languageID) {

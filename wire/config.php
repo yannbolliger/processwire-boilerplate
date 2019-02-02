@@ -142,6 +142,25 @@ $config->useFunctionsAPI = false;
  */
 $config->useMarkupRegions = false;
 
+/**
+ * Disable all HTTPS requirements?
+ * 
+ * Use this option only for development or staging environments, on sites where you are 
+ * otherwise requiring HTTPS. By setting this option to something other than false, you
+ * can disable any HTTPS requirements specified per-template, enabling you to use your 
+ * site without SSL during development or staging, etc.
+ * 
+ * The following options are available:
+ * - boolean true: Disable HTTPS requirements globally
+ * - string containing hostname: Disable HTTPS requirements only for specified hostname.
+ * - array containing hostnames: Disable HTTPS requirements for specified hostnames. 
+ * 
+ * @var bool|string|array
+ *
+ */
+$config->noHTTPS = false;
+
+
 
 /*** 2. DATES & TIMES *************************************************************************/
 
@@ -331,6 +350,24 @@ $config->sessionHistory = 0;
  */
 $config->userAuthHashType = 'sha1';
 
+/**
+ * Names (string) or IDs (int) of roles that are not allowed to login
+ *
+ * Note that you must create these roles yourself in the admin. When a user has
+ * one of these named roles, $session->login() will not accept a login from them.
+ * This affects the admin login form and any other login forms that use ProcessWire’s
+ * session system.
+ * 
+ * The default value specifies a role name of "login-disabled", meaning if you create
+ * a role with that name, and assign it to a user, that user will no longer be able
+ * to login. 
+ *
+ * @var array
+ *
+ */
+$config->loginDisabledRoles = array(
+	'login-disabled'
+);
 
 
 /*** 4. TEMPLATE FILES **************************************************************************/
@@ -544,6 +581,7 @@ $config->fileContentTypes = array(
 	'jpg' => 'image/jpeg',
 	'jpeg' => 'image/jpeg',
 	'png' => 'image/x-png',
+	'svg' => 'image/svg+xml'
 	);
 
 
@@ -554,7 +592,8 @@ $config->fileContentTypes = array(
  * 
  * #property bool upscaling Upscale if necessary to reach target size? (1=true, 0=false)
  * #property bool cropping Crop if necessary to reach target size? (1=true, 0=false)
- * #property bool autoRotation Automatically correct orientation?
+ * #property bool autoRotation Automatically correct orientation? (1=true, 0=false)
+ * #property bool interlace Use interlaced JPEGs by default? Recommended. (1=true, 0=false)
  * #property string sharpening Sharpening mode, enter one of: none, soft, medium, strong
  * #property int quality Image quality, enter a value between 1 and 100, where 100 is highest quality (and largest files)
  * #property float defaultGamma Default gamma of 0.5 to 4.0 or -1 to disable gamma correction (default=2.0)
@@ -566,6 +605,7 @@ $config->imageSizerOptions = array(
 	'upscaling' => true, // upscale if necessary to reach target size?
 	'cropping' => true, // crop if necessary to reach target size?
 	'autoRotation' => true, // automatically correct orientation?
+	'interlace' => false, // use interlaced JPEGs by default? (recommended)
 	'sharpening' => 'soft', // sharpening: none | soft | medium | strong
 	'quality' => 90, // quality: 1-100 where higher is better but bigger
 	'hidpiQuality' => 60, // Same as above quality setting, but specific to hidpi images
@@ -699,6 +739,14 @@ $config->protectCSRF = true;
 $config->maxUrlSegments = 4;
 
 /**
+ * Maximum length for any individual URL segment (default=128)
+ * 
+ * @var int
+ * 
+ */
+$config->maxUrlSegmentLength = 128;
+
+/**
  * Maximum URL/path slashes (depth) for request URLs
  * 
  * The maximum number of slashes that any path requested from ProcessWire may have.
@@ -759,6 +807,16 @@ $config->pageNameCharset = 'ascii';
 $config->pageNameWhitelist = '-_.abcdefghijklmnopqrstuvwxyz0123456789æåäßöüđжхцчшщюяàáâèéëêěìíïîõòóôøùúûůñçčćďĺľńňŕřšťýžабвгдеёзийклмнопрстуфыэęąśłżź';
 
 /**
+ * Name to use for untitled pages
+ * 
+ * When page has this name, the name will be changed automatically (to a field like title) when it is possible to do so.
+ * 
+ * @var string
+ * 
+ */
+$config->pageNameUntitled = "untitled";
+
+/**
  * Maximum paginations
  *
  * Maxmum number of supported paginations when using page numbers.
@@ -783,10 +841,54 @@ $config->maxPageNum = 999;
  */
 $config->wireInputOrder = 'get post';
 
-
+/**
+ * Lazy-load get/post/cookie input into $input API var?
+ * 
+ * This is an experimental option for reduced memory usage when a lot of input data is present. 
+ * 
+ * This prevents PW from keeping separate copies of get/post/cookie data, and it instead works
+ * directly from the PHP $_GET, $_POST and $_COOKIE vars.
+ * 
+ * This option is also useful in that anything you SET to PW’s $input->get/post/cookie also gets
+ * set to the equivalent PHP $_GET, $_POST and $_COOKIE. 
+ * 
+ * @var bool
+ * 
+ */
+$config->wireInputLazy = false;
 
 
 /*** 7. DATABASE ********************************************************************************/
+
+/**
+ * Database name
+ *
+ */
+$config->dbName = '';
+
+/**
+ * Database username
+ *
+ */
+$config->dbUser = '';
+
+/**
+ * Database password
+ *
+ */
+$config->dbPass = '';
+
+/**
+ * Database host
+ *
+ */
+$config->dbHost = '';
+
+/**
+ * Database port
+ *
+ */
+$config->dbPort = 3306;
 
 /**
  * Database character set
@@ -841,30 +943,6 @@ $config->dbPath = '';
  * 
  */
 $config->dbLowercaseTables = true;
-
-/**
- * Database username
- * 
- */
-$config->dbUser = '';
-
-/**
- * Database password
- * 
- */
-$config->dbPass = '';
-
-/**
- * Database host
- * 
- */
-$config->dbHost = '';
-
-/**
- * Database port
- * 
- */
-$config->dbPort = 3306;
 
 /**
  * Database init command (PDO::MYSQL_ATTR_INIT_COMMAND)
@@ -983,6 +1061,29 @@ $config->substituteModules = array(
 );
 
 /**
+ * WireMail module(s) default settings
+ * 
+ * Note you can add any other properties to the wireMail array that are supported by WireMail settings
+ * like we’ve done with from, fromName and headers here. Any values set here become defaults for the 
+ * WireMail module. 
+ * 
+ * #property string module Name of WireMail module to use or blank to auto-detect. (default='')
+ * #property string from Default from email address, when none provided at runtime. (default=$config->adminEmail)
+ * #property string fromName Default from name string, when none provided at runtime. (default='')
+ * #property string newline What to use for newline if different from RFC standard of "\r\n" (optional). 
+ * #property array headers Default additional headers to send in email, key=value. (default=[])
+ * 
+ * @var array
+ * 
+ */
+$config->wireMail = array(
+	'module' => '', 
+	'from' => '', 
+	'fromName' => '', 
+	'headers' => array(), 
+);
+
+/**
  * PageList default settings
  * 
  * Note that 'limit' and 'speed' can also be overridden in the ProcessPageList module settings.
@@ -1025,6 +1126,16 @@ $config->pageEdit = array(
 	'editCrumbs' => false,
 );
 
+/**
+ * PageAdd default settings
+ * 
+ * #property string noSuggestTemplates Disable suggestions for new pages (1=disable all, or specify template names separated by space)
+ * 
+ */
+$config->pageAdd = array(
+	'noSuggestTemplates' => '', 
+); 
+
 
 /*** 9. MISC ************************************************************************************/
 
@@ -1045,11 +1156,19 @@ $config->logs = array(
 );
 
 /**
+ * Include IP address in logs, when applicable?
+ * 
+ * @var bool
+ * 
+ */
+$config->logIP = false;
+
+/**
  * Default admin theme
  * 
  * Module name of default admin theme for guest and users that haven't already selected one
  *
- * Core options include: **AdminThemeDefault** or **AdminThemeReno**.
+ * Core options include: **AdminThemeDefault** or **AdminThemeReno** or **AdminThemeUikit**.
  * Additional options will depend on what other 3rd party AdminTheme modules you have installed.
  *
  * @var string
@@ -1187,6 +1306,7 @@ $config->lazyPageChunkSize = 250;
  * 
  */
 
+
 /*** 10. RUNTIME ********************************************************************************
  * 
  * The following are runtime-only settings and cannot be changed from /site/config.php
@@ -1242,9 +1362,17 @@ $config->versionName = '';
  * Value is null, 0, or 1 or higher. This should be kept at null in this file. 
  *
  */
-$config->inputfieldColumnWidthSpacing = null; 
+$config->inputfieldColumnWidthSpacing = null;
 
-
+/**
+ * Populated to contain <link rel='next|prev'.../> tags for document head
+ * 
+ * This is populated only after a MarkupPagerNav::render() has rendered pagination and is
+ * otherwise null. 
+ *
+ * $config->pagerHeadTags = '';
+ * 
+ */
 
 /*** 11. SYSTEM *********************************************************************************
  * 

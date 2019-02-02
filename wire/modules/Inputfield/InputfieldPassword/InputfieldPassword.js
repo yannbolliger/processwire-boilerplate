@@ -8,6 +8,7 @@ jQuery(document).ready(function($) {
 		var $inputfield = $input.closest('.Inputfield');
 		var $confirm = $inputfield.find('.InputfieldPasswordConfirm');
 		var $confirms = $confirm.next('.pass-confirm');
+		var $inputOld = $inputfield.find('input.InputfieldPasswordOld'); 
 		var $wrapScores = $input.siblings('.pass-scores');
 		var $percent = $input.siblings('.pass-percent');
 		var $scores = $wrapScores.children();
@@ -18,6 +19,18 @@ jQuery(document).ready(function($) {
 			strengthScaleFactor: parseFloat($input.attr('data-factor')),
 			minimumChars: minlength
 		};
+
+		if($inputOld.length) {
+			$input.attr('disabled', 'disabled'); 
+			$inputOld.on('keyup', function() {
+				if($(this).val().length > 0) {
+					$inputOld.off('keyup');
+					$input.removeAttr('disabled');
+				}
+			}); 
+		}
+		
+		if($confirm.length) $confirm.attr('disabled', 'disabled');
 
 		$input.complexify(options, function(valid, complexity) {
 			
@@ -71,6 +84,9 @@ jQuery(document).ready(function($) {
 			if(len == 0) {
 				$scores.removeClass('on');
 				return;
+			} else if($inputOld.length && $inputOld.val() === $input.val()) {
+				// same as old password
+				$on = $scores.filter('.pass-same');
 			} else if(numGood < requirements.length) {
 				// doesn't match requirements
 				$on = $scores.filter('.pass-fail');
@@ -101,7 +117,8 @@ jQuery(document).ready(function($) {
 				$on.siblings('.on').removeClass('on');
 				$on.addClass('on');
 			}
-			if($on.hasClass('pass-fail') || $on.hasClass('pass-short') || $on.hasClass('pass-common') || $on.hasClass('pass-invalid')) {
+			if($on.hasClass('pass-fail') || $on.hasClass('pass-short') || $on.hasClass('pass-common') 
+				|| $on.hasClass('pass-invalid') || $on.hasClass('pass-same')) {
 				$confirm.attr('disabled', 'disabled').val('').change();
 			} else {
 				$confirm.removeAttr('disabled');
@@ -151,11 +168,11 @@ jQuery(document).ready(function($) {
 	});
 
 	// accommodate issue where Firefox auto-populates remembered password when it shouldn't
-	var $ffinputs = $inputs.filter("[autocomplete='off']");
+	var $ffinputs = $('.InputfieldPassword').find("input[autocomplete='new-password']");
 	if($ffinputs.length) {
 		setTimeout(function() {
 			$ffinputs.each(function() {
-				if($(this).val().length < 1) return;
+				if($(this).val().length < 1 || $(this).attr('value').length > 0) return;
 				$(this).val('').trigger('keyup').change()
 					.closest('.Inputfield').removeClass('InputfieldStateChanged');
 			});

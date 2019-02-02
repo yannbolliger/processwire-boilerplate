@@ -21,6 +21,7 @@
  * @property string $ns Namespace found in the template file, or blank if not determined.   #pw-group-identification
  * @property string $pageClass Class for instantiated page objects. Page assumed if blank, or specify class name.  #pw-group-identification
  * @property int $modified Last modified time for template or template file
+ * @property string $icon Icon name specified with the template (preferable to use getIcon/setIcon methods instead). #pw-internal
  * 
  * Fieldgroup/Fields 
  * 
@@ -291,8 +292,11 @@ class Template extends WireData implements Saveable, Exportable {
 	/**
 	 * Get the role pages that are part of this template
 	 *
-	 * This method returns a blank PageArray if roles haven't yet been loaded into the template. 
-	 * If the roles have previously been loaded as an array, then this method converts that array to a PageArray and returns it. 
+	 * - This method returns a blank PageArray if roles haven’t yet been loaded into the template. 
+	 * - If the roles have previously been loaded as an array, then this method converts that array 
+	 *   to a PageArray and returns it. 
+	 * - If you make changes to returned roles, make sure to set it back to the template again with setRoles(). 
+	 *   It’s preferable to make changes with addRole() and removeRole() methods instead.
 	 * 
 	 * #pw-group-access
 	 *
@@ -305,14 +309,18 @@ class Template extends WireData implements Saveable, Exportable {
 
 		if(strpos($type, 'page-') === 0) $type = str_replace('page-', '', $type);
 		
-		if($type != 'view') {
-			$roles = $this->wire('pages')->newPageArray();
+		if($type !== 'view') {
 			$roleIDs = null;
-			if($type == 'edit') $roleIDs = $this->editRoles;	
-				else if($type == 'create') $roleIDs = $this->createRoles;
-				else if($type == 'add') $roleIDs = $this->addRoles;
-				else throw new WireException("Unknown roles type: $type"); 
-			if(empty($roleIDs)) return $roles;
+			if($type === 'edit') {
+				$roleIDs = $this->editRoles;
+			} else if($type === 'create') {
+				$roleIDs = $this->createRoles;
+			} else if($type === 'add') {
+				$roleIDs = $this->addRoles;
+			} else {
+				throw new WireException("Unknown roles type: $type");
+			}
+			if(empty($roleIDs)) return $this->wire('pages')->newPageArray();
 			return $this->wire('pages')->getById($roleIDs);
 		}
 
@@ -362,7 +370,7 @@ class Template extends WireData implements Saveable, Exportable {
 	 *  - `edit` 
 	 *  - `create` 
 	 *  - `add` 
-	 *  - Or a `Permission` object
+	 *  - Or a `Permission` object of `page-view` or `page-edit`
 	 * @return bool True if template has the role, false if not
 	 *
 	 */
@@ -402,37 +410,137 @@ class Template extends WireData implements Saveable, Exportable {
 	 * #pw-group-manipulation
 	 *
 	 * @param array|PageArray $value Role objects or array or Role IDs. 
-	 * @param string Specify one of the following:
+	 * @param string $type Specify one of the following:
 	 *  - `view` (default)
 	 *  - `edit`
 	 *  - `create`
 	 *  - `add` 
-	 *  - Or a `Permission` object
+	 *  - Or a `Permission` object of `page-view` or `page-edit`
 	 *
 	 */
 	public function setRoles($value, $type = 'view') {
-		if(strpos($type, 'page-') === 0) $type = str_replace('page-', '', $type);
-		
-		if($type == 'view') {
+		if($type === 'view' || $type === 'page-view') {
 			if(is_array($value) || $value instanceof PageArray) {
 				$this->_roles = $value;
 			}
-			
 		} else if(WireArray::iterable($value)) {
 			$roleIDs = array();
 			foreach($value as $v) {
-				if(is_int($v)) $id = $v;
-					else if(is_string($v) && ctype_digit($v)) $id = (int) $v;
-					else if($v instanceof Page) $id = $v->id;
-					else continue;
+				if(is_int($v)) {
+					$id = $v;
+				} else if(is_string($v) && ctype_digit($v)) {
+					$id = (int) $v;
+				} else if($v instanceof Page) {
+					$id = $v->id;
+				} else {
+					continue;
+				}
 				$roleIDs[] = $id;	
 			}
-			if($type == 'edit') $this->set('editRoles', $roleIDs);
-				else if($type == 'create') $this->set('createRoles', $roleIDs);
-				else if($type == 'add') $this->set('addRoles', $roleIDs);
+			if($type == 'edit' || $type == 'page-edit') {
+				$this->set('editRoles', $roleIDs);
+			} else if($type == 'create' || $type == 'page-create') {
+				$this->set('createRoles', $roleIDs);
+			} else if($type == 'add' || $type == 'page-add') {
+				$this->set('addRoles', $roleIDs);
+			} else {
+				// @todo Some other $type, delegate to permissionByRole
+			}
 		}
 	}
 
+	/**
+	 * Add a Role to this template for view, edit, create, or add permission
+	 * 
+	 * @param Role|int|string $role Role instance, id or name
+	 * @param string $type Type of role being added, one of: view, edit, create, add. (default=view)
+	 * @return $this
+	 * @throws WireException If given $role cannot be resolved
+	 * 
+	 */
+	public function addRole($role, $type = 'view') {
+		if(is_int($role) || is_string($role)) $role = $this->wire('roles')->get($role); 
+		if(!$role instanceof Role) throw new WireException("addRole requires Role instance, name or id");
+		$roles = $this->getRoles($type);	
+		if(!$roles->has($role)) {
+			$roles->add($role); 
+			$this->setRoles($roles, $type); 
+		}
+		return $this;
+	}
+
+	/**
+	 * Remove a Role to this template for view, edit, create, or add permission
+	 *
+	 * @param Role|int|string $role Role instance, id or name
+	 * @param string $type Type of role being added, one of: view, edit, create, add. (default=view)
+	 *   You may also specify “all” to remove the role entirely from all possible usages in the template. 
+	 * @return $this
+	 * @throws WireException If given $role cannot be resolved
+	 *
+	 */
+	public function removeRole($role, $type = 'view') {
+		
+		if(is_int($role) || is_string($role)) {
+			$role = $this->wire('roles')->get($role);
+		}
+		
+		if(!$role instanceof Role) {
+			throw new WireException("removeRole requires Role instance, name or id");
+		}
+		
+		if($type == 'all') {
+			$types = array('create', 'add', 'edit', 'view'); 
+			$rolesPermissions = $this->rolesPermissions;
+			if(isset($rolesPermissions["$role->id"])) {
+				unset($rolesPermissions["$role->id"]); 
+				$this->rolesPermissions = $rolesPermissions; 
+			}
+		} else {
+			$types = array($type);
+		}
+		
+		foreach($types as $t) {
+			$roles = $this->getRoles($t);
+			if($roles->has($role)) {
+				$roles->remove($role);
+				$this->setRoles($roles, $t);
+			}
+		}
+		
+		return $this; 
+	}
+
+	/**
+	 * Add a permission that applies to users having a specific role with pages using this template
+	 * 
+	 * Note that the change is not committed until you save() the template. 
+	 * 
+	 * @param Permission|int|string $permission Permission object, name, or id
+	 * @param Role|int|string $role Role object, name or id
+	 * @param bool $test Specify true to only test if an update would be made, without changing anything
+	 * @return bool Returns true if an update was made (or would be made), false if not
+	 * 
+	 */
+	public function addPermissionByRole($permission, $role, $test = false) {
+		return $this->wire('templates')->setTemplatePermissionByRole($this, $permission, $role, false, $test); 
+	}
+
+	/**
+	 * Revoke a permission that applies to users having a specific role with pages using this template
+	 *
+	 * Note that the change is not committed until you save() the template.
+	 *
+	 * @param Permission|int|string $permission Permission object, name, or id
+	 * @param Role|int|string $role Role object, name or id
+	 * @param bool $test Specify true to only test if an update would be made, without changing anything
+	 * @return bool Returns true if an update was made (or would be made), false if not
+	 *
+	 */
+	public function revokePermissionByRole($permission, $role, $test = false) {
+		return $this->wire('templates')->setTemplatePermissionByRole($this, $permission, $role, true, $test); 
+	}
+	
 	/**
 	 * Does this template have the given Field?
 	 * 
@@ -483,7 +591,7 @@ class Template extends WireData implements Saveable, Exportable {
 
 			if($this->settings[$key] != $value) {
 				if($this->settings[$key] && ($this->settings['flags'] & Template::flagSystem) && in_array($key, array('id', 'name'))) {
-					throw new WireException("Template '$this' has the system flag and you may not change it's 'id' or 'name' fields. "); 
+					throw new WireException("Template '$this' has the system flag and you may not change its 'id' or 'name' fields. "); 
 				}
 				$this->trackChange($key, $this->settings[$key], $value); 
 			}
@@ -531,7 +639,7 @@ class Template extends WireData implements Saveable, Exportable {
 			if(!is_array($value)) $value = array();
 			$_value = array();
 			foreach($value as $roleID => $permissionIDs) {
-				// if any one of these happend to be a role name or permission name, convert to IDs
+				// if any one of these happened to be a role name or permission name, convert to IDs
 				if(!ctype_digit("$roleID")) $roleID = $this->wire('roles')->get("name=$roleID")->id;
 				if(!$roleID) continue;
 				foreach($permissionIDs as $permissionID) {
@@ -748,7 +856,7 @@ class Template extends WireData implements Saveable, Exportable {
 	 * 
 	 * #pw-group-manipulation
 	 *
-	 * @return $this|bool Returns Template if successful, or false if not
+	 * @return Template|bool Returns Template if successful, or false if not
 	 *
 	 */
 	public function save() {
@@ -809,7 +917,7 @@ class Template extends WireData implements Saveable, Exportable {
 	 * 
 	 */
 	public function hookFinished(HookEvent $e) {
-		foreach($this->wire('templates') as $template) {
+		foreach($e->wire('templates') as $template) {
 			if($template->isChanged('modified') || $template->isChanged('ns')) $template->save();
 		}
 	}
@@ -1041,7 +1149,7 @@ class Template extends WireData implements Saveable, Exportable {
 	 * 
 	 * #pw-group-identification
 	 * 
-	 * @param $icon Font-awesome icon name
+	 * @param string $icon Font-awesome icon name
 	 * @return $this
 	 * 
 	 */
