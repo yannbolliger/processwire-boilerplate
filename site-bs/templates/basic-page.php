@@ -7,6 +7,6 @@
 
 if ($page->rootParent->hasChildren > 1) {
 	$sidebar = renderNavTree($page->rootParent, 3);
-	// make any sidebar text appear after navigation
+	
 	$sidebar .= $page->sidebar;
 }

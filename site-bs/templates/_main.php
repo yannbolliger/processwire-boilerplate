@@ -16,8 +16,8 @@
 	<meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1, maximum-scale=1">
 	<meta http-equiv="x-ua-compatible" content="ie=edge" />
 
-	<title><?php echo $title; ?></title>
-	<meta name="description" content="<?php echo $page->summary; ?>" />
+	<title><?= $title ?> | <?= $homepage->title ?></title>
+	<meta name="description" content="<?= $homepage->summary ?>" />
 	<meta name="keywords" content="" />
 
 	<link rel="stylesheet" type="text/css" href="<?= versionedAssetUrl('styles/style.css') ?>" />
@@ -59,8 +59,9 @@
 		?>
 	</ul>
 
-	<? // top navigation ?>
-	<?= renderNav($homepage->and($homepage->children)) ?>
+  <nav id='topnav' role='navigation'>
+	  <?= renderNav($homepage->and($homepage->children)) ?>
+  </nav>
 
 	<div class='breadcrumbs' role='navigation' aria-label='<?php echo _x('You are here:', 'breadcrumbs'); ?>'>
 		<?php
@@ -80,34 +81,32 @@
 	</form>
 
 
-	<main>
-
-		<div id='content'>
+	<div class="container">
+		<main>
 			<h1><?php echo $title; ?></h1>
 			<?php echo $content; ?>
-		</div>
-
+		</main>
 
 		<?php if($sidebar): ?>
 		<aside id='sidebar'>
 			<?php echo $sidebar; ?>
 		</aside>
 		<?php endif; ?>
-
-	</main>
-
+	</div>
 
 	<footer id="footer">
-    <?php require '_contact_form.php'; ?>
+    <?php // include '_contact_form.php'; ?>
 	</footer>
 
+	<? /*
 	<script
 		src="https://code.jquery.com/jquery-3.2.1.min.js"
 		integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
 		crossorigin="anonymous">
 	</script>
-	<? /* <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.colorbox/1.6.4/jquery.colorbox-min.js"></script>
-	<script type="text/javascript" src="<?= versionedAssetUrl('scripts/main.js') ?>" ></script> */ ?>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.colorbox/1.6.4/jquery.colorbox-min.js"></script>
+	<script type="text/javascript" src="<?= versionedAssetUrl('scripts/main.js') ?>" ></script>
+	*/ ?>
 
 </body>
 </html>

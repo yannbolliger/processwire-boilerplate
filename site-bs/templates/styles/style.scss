@@ -57,6 +57,10 @@ $duration-base: 0.35s;
   box-sizing: border-box;
 }
 
+html {
+  min-height: 100%;
+}
+
 body {
   font-size: $font-base;
   font-family: $font-family;
@@ -76,6 +80,11 @@ a:active {
 
 img {
   display: block;
+  margin: 0.5em auto;
+  max-width: 100%;
+}
+
+audio {
   width: 100%;
 }
 
@@ -89,6 +98,18 @@ img {
   @media screen and (max-width: $mobile-breakpoint - 0.5) {
     display: none !important;
   }
+}
+
+// from Bootstrap v4
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .container {
