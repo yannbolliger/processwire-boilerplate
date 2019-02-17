@@ -1,33 +1,24 @@
-
-$(function () {
-
+$(function() {
   /**
-  * Controls burger menu
-  */
-
+   * Controls burger menu
+   */
   /*
   $("#menu #burger").click(function() {
     $(".topnav").toggleClass("hidden");
   });
   */
-
-
-
   /**
-  * Scrolls to contact form on click in menu
-  */
-
+   * Scrolls to contact form on click in menu
+   */
   /*
   $("#menu a[href*=contact]").click(function(e) {
     e.preventDefault();
     $('html, body').animate({ scrollTop: $("#contact").offset().top }, 1000);
   });
   */
-
   /**
-  *  Colorbox
-  */
-
+   *  Colorbox
+   */
   /*
   $('a.colorbox').colorbox({
     rel:'foto',
@@ -51,13 +42,10 @@ $(function () {
     returnFocus: false
   });
   */
-
-
   /**
-  * Handles mailing and animation
-  *
-  */
-
+   * Handles mailing and animation
+   *
+   */
   /*
   // submit function
   $("#contact form").submit(function(e){
@@ -99,5 +87,4 @@ $(function () {
     $("#response").addClass("hidden");
   });
   */
-
-});
+})

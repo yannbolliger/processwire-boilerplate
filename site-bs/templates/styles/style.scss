@@ -20,7 +20,7 @@ $line-height: 1.4;
 $font-family: Helvetica, Arial, sans serif;
 
 // Colors
-$main-color: #F00;
+$main-color: #f00;
 
 // Animation, transitions
 $duration-base: 0.35s;
@@ -75,7 +75,6 @@ a:active {
   outline: none;
   text-decoration: none;
   color: inherit;
-
 }
 
 img {
@@ -120,10 +119,9 @@ audio {
   @include clearfix;
 
   @media screen and (min-width: $mobile-breakpoint) {
-    padding: 0 2*$unit;
+    padding: 0 2 * $unit;
   }
 }
-
 
 //////////////////////////////
 // Custom styling

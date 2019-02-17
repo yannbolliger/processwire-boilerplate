@@ -5,70 +5,70 @@
 #cboxOverlay,
 #cboxWrapper,
 #colorbox {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 1020;
-    overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1020;
+  overflow: hidden;
 }
 
 #cboxOverlay {
-    position: fixed;
-    width: 100%;
-    height: 100%;
+  position: fixed;
+  width: 100%;
+  height: 100%;
 }
 
 #cboxBottomLeft,
 #cboxMiddleLeft {
-    clear: left;
+  clear: left;
 }
 
 #cboxContent {
-    position: relative;
+  position: relative;
 }
 
 #cboxLoadedContent {
-    overflow: auto;
+  overflow: auto;
 }
 
 #cboxTitle {
-    margin: 0;
+  margin: 0;
 }
 
 #cboxLoadingGraphic,
 #cboxLoadingOverlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 }
 
 #cboxClose,
 #cboxNext,
 #cboxPrevious,
 #cboxSlideshow {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 .cboxPhoto {
-    float: left;
-    margin: auto;
-    border: 0;
-    display: block;
+  float: left;
+  margin: auto;
+  border: 0;
+  display: block;
 }
 
 .cboxIframe {
-    width: 100%;
-    height: 100%;
-    display: block;
-    border: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: 0;
 }
 
 #cboxContent,
 #cboxLoadedContent,
 #colorbox {
-    box-sizing: content-box;
+  box-sizing: content-box;
 }
 /**
 * Colorbox module default style:
@@ -76,148 +76,148 @@
 * the nesting of the generated HTML.
 */
 #cboxOverlay {
-    background: #000;
+  background: #000;
 }
 
 #cboxWrapper,
 #colorbox {
-    overflow: visible;
+  overflow: visible;
 }
 
 #colorbox {
-    outline: none!important;
-    /*important for chrome*/
-    color: white;
-    background: transparent;
-    font-family: inherit;
+  outline: none !important;
+  /*important for chrome*/
+  color: white;
+  background: transparent;
+  font-family: inherit;
 
-    #cboxTopCenter {
-        height: 3em;
+  #cboxTopCenter {
+    height: 3em;
+  }
+
+  #cboxBottomCenter {
+    height: 1em;
+  }
+
+  #cboxMiddleLeft,
+  #cboxMiddleRight {
+    width: 3.5em;
+    @media (max-width: 650px) {
+      width: 1em;
     }
+  }
 
-    #cboxBottomCenter {
-        height: 1em;
+  #cboxContent {
+    /*overflow: hidden;*/
+  }
+
+  #cboxError {
+    padding: 50px;
+    border: 1px solid #ccc;
+  }
+
+  #cboxLoadedContent {
+    margin-bottom: 1.5em;
+  }
+
+  #cboxCurrent,
+  #cboxTitle {
+    position: absolute;
+    bottom: 0.5em;
+    left: 0;
+    width: 100%;
+    height: 1em;
+  }
+
+  #cboxTitle {
+    left: 22%;
+    width: 78%;
+    @media (max-width: 650px) {
+      left: 35%;
+      width: 65%;
     }
+  }
 
-    #cboxMiddleLeft,
-    #cboxMiddleRight {
-        width: 3.5em;
-        @media (max-width: 650px) {
-            width: 1em;
-        }
+  button {
+    color: inherit;
+    background-color: transparent;
+    border: 0;
+    position: absolute;
+    line-height: 1em;
+    padding: 0;
+  }
+
+  #cboxNext,
+  #cboxPrevious {
+    top: 20%;
+    left: -0.75em;
+    font-size: 3em;
+    height: 50%;
+    width: 1.5em;
+    text-align: left;
+    outline: none !important;
+    -webkit-transition: 0.35s;
+    transition: 0.35s;
+
+    &:hover {
+      color: white;
+      left: -0.825em;
+      -webkit-transition: 0.35s;
+      transition: 0.35s;
     }
+    @media (max-width: 650px) {
+      left: -0.3em;
 
-    #cboxContent {
-        /*overflow: hidden;*/
+      &:hover {
+        left: -0.4em;
+      }
     }
+  }
 
-    #cboxError {
-        padding: 50px;
-        border: 1px solid #ccc;
+  #cboxNext {
+    right: -0.75em;
+    left: auto;
+    text-align: right;
+
+    &:hover {
+      right: -0.825em;
+      left: auto;
     }
+    @media (max-width: 650px) {
+      right: -0.3em;
 
-    #cboxLoadedContent {
-        margin-bottom: 1.5em;
+      &:hover {
+        right: -0.4em;
+      }
     }
+  }
 
-    #cboxCurrent,
-    #cboxTitle {
-        position: absolute;
-        bottom: 0.5em;
-        left: 0;
-        width: 100%;
-        height: 1em;
+  #cboxClose {
+    top: -37px;
+    right: -4px;
+    font-size: 35px;
+    font-weight: 400;
+    -webkit-transition: 0.35s;
+    transition: 0.35s;
+
+    &:hover {
+      color: #a13027;
+      -webkit-transition: 0.35s;
+      transition: 0.35s;
     }
+  }
 
-    #cboxTitle {
-        left: 22%;
-        width: 78%;
-        @media (max-width: 650px) {
-            left: 35%;
-            width: 65%;
-        }
-    }
+  .cboxSlideshow_on #cboxSlideshow {
+    /*Play Symbol*/
+    bottom: 0;
+    right: 30px;
+  }
 
-    button {
-        color: inherit;
-        background-color: transparent;
-        border: 0;
-        position: absolute;
-        line-height: 1em;
-        padding: 0;
-    }
-
-    #cboxNext,
-    #cboxPrevious {
-        top: 20%;
-        left: -0.75em;
-        font-size: 3em;
-        height: 50%;
-        width: 1.5em;
-        text-align: left;
-        outline: none!important;
-        -webkit-transition: 0.35s;
-        transition: 0.35s;
-
-        &:hover {
-            color: white;
-            left: -0.825em;
-            -webkit-transition: 0.35s;
-            transition: 0.35s;
-        }
-        @media (max-width: 650px) {
-            left: -0.3em;
-
-            &:hover {
-                left: -0.4em;
-            }
-        }
-    }
-
-    #cboxNext {
-        right: -0.75em;
-        left: auto;
-        text-align: right;
-
-        &:hover {
-            right: -0.825em;
-            left: auto;
-        }
-        @media (max-width: 650px) {
-            right: -0.3em;
-
-            &:hover {
-                right: -0.4em;
-            }
-        }
-    }
-
-    #cboxClose {
-        top: -37px;
-        right: -4px;
-        font-size: 35px;
-        font-weight: 400;
-        -webkit-transition: 0.35s;
-        transition: 0.35s;
-
-        &:hover {
-            color: #a13027;
-            -webkit-transition: 0.35s;
-            transition: 0.35s;
-        }
-    }
-
-    .cboxSlideshow_on #cboxSlideshow {
-        /*Play Symbol*/
-        bottom: 0;
-        right: 30px;
-    }
-
-    .cboxSlideshow_off #cboxSlideshow {
-        /*Pause Syymbol*/
-    }
+  .cboxSlideshow_off #cboxSlideshow {
+    /*Pause Syymbol*/
+  }
 }
 /* The following are fixes for IE. */
 .cboxIE6 #cboxTitle {
-    background: transparent;
+  background: transparent;
 }
