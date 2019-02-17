@@ -8,17 +8,14 @@
         "2c889b7622e6ed4e56a1414ac333c814": {
             "text": "Suche"
         },
-        "7dce122004969d56ae2e0245cb754d35": {
-            "text": "Bearbeiten"
-        },
-        "3ee693d376f73e2bfa34e985c30bec66": {
-            "text": "Abmelden (%s)"
-        },
-        "b6e31daf2404aab3d78c7e972dfe3f8d": {
-            "text": "Login"
-        },
         "7679c0bdbd87c1984bd611c24b3cd0cb": {
             "text": "de"
+        },
+        "4232fbe6436fa07e415b3fd034b9cadd": {
+            "text": "Sie sind hier:"
+        },
+        "3396c3554186e12eaeff928963920d63": {
+            "text": "Suche:"
         }
     }
 }

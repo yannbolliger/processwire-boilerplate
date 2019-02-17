@@ -3,10 +3,10 @@
     "textdomain": "wire--modules--inputfield--inputfieldpage--inputfieldpage-module",
     "translations": {
         "6dc3e540b29f68e1eaf558b6a2edd476": {
-            "text": "Geben  Sie die Titel der Elemente an, die Sie hinzuf\u00fcgen m\u00f6chten; einen pro Zeile. Sie werden angelegt und Ihrer Auswahl hinzugef\u00fcgt, wenn Sie die Seite speichern."
+            "text": "Geben Sie die Titel der Elemente an, die Sie hinzuf\u00fcgen m\u00f6chten; einen pro Zeile. Sie werden angelegt und Ihrer Auswahl hinzugef\u00fcgt, wenn Sie die Seite speichern."
         },
         "b82b34c94588fc88ca4a6b18f5e18aef": {
-            "text": "Geben sie den Titel des Elementes an, das Sie hinzuf\u00fcgen m\u00f6chten. Es wird ausgew\u00e4hlt, wenn Sie die Seite speichern."
+            "text": "Geben Sie den Titel des Elementes an, das Sie hinzuf\u00fcgen m\u00f6chten. Es wird ausgew\u00e4hlt, wenn Sie die Seite speichern."
         },
         "e3cada644043c81e6ff21250f2e53f3a": {
             "text": "Neue Seiten werden als %s hinzugef\u00fcgt"
@@ -18,7 +18,7 @@
             "text": "Seite %s hinzugef\u00fcgt"
         },
         "29b43e0c70cb336d03f04f3f06a8789d": {
-            "text": "Fehler beim hinzuf\u00fcgen der Seite \"%s\""
+            "text": "Fehler beim Hinzuf\u00fcgen der Seite \"%s\""
         },
         "81eeab9506186e2dca8faefa78d54067": {
             "text": "Beispiel:"
@@ -26,50 +26,23 @@
         "6f8d1b93e4aad53511c85e29ed36b3d0": {
             "text": "(Standard)"
         },
-        "962f1366aaa6f1c636d3214e12322362": {
-            "text": "W\u00e4hlbare Seiten"
-        },
-        "21348aafc8733099a5b3c20e4a90e7b4": {
-            "text": "Eltern der w\u00e4hlbaren Seite(n)"
-        },
-        "dceea0994df5640514b906a18a43810f": {
-            "text": "Template der w\u00e4hlbaren Seite(n)"
-        },
         "5b0591013bf2cac5ee96f90e31a5b2e9": {
-            "text": "W\u00e4hlen Sie die Eltern der w\u00e4hlbaren Seiten"
+            "text": "W\u00e4hlen Sie die Elternseite der w\u00e4hlbaren Seiten"
         },
         "881b1a7b97bc4d70099cc59a53e8a8e5": {
-            "text": "Eingabe Feldtyp"
-        },
-        "9f80067ff42d8e69d0c3a24b67ef4c85": {
-            "text": "W\u00e4hlen sie das Template f\u00fcr die betreffenden Seiten. Das kann als Ersatz oder in Erg\u00e4nzung zur zuvor gemachten Einstellung genutzt werden. Beachten Sie, dass diese Einstellung nicht mit den PageListSelect Eingabefeldern kompatibel ist."
-        },
-        "d04c6c77608855a3ff0fb3ee32a2cd53": {
-            "text": "Benutzerspezifischer PHP-Code, um w\u00e4hlbare Seiten zu finden."
+            "text": "Eingabefeld-Typ"
         },
         "e5c1791ec6a73eed5d8a7002e2799470": {
-            "text": "W\u00e4hlen Sie ein Seitenfeld, welches Sie zum generieren von Labels f\u00fcr jede verf\u00fcgbare Seite nutzen wollen."
-        },
-        "bcf331523fb730639bde7c2e8fc4f811": {
-            "text": "Der Feldtyp, welches zum ausw\u00e4hlen von Seiten genutzt werden soll. Nutze einen einheitlichen Typ der f\u00fcr einfache Seiten und Multi-Seiten genutzt werden kann. Einstellungen kannst Du in dem \"Details\"-tag des Feldes vornehmen."
-        },
-        "195a66e99428447940ac989366724b42": {
-            "text": "Mit einem Sternchen gekennzeichnete Typen stehen f\u00fcr die Multi-Seiten."
+            "text": "W\u00e4hlen Sie ein Seitenfeld, welches Sie zum Generieren von Labels f\u00fcr jede w\u00e4hlbare Seite nutzen wollen."
         },
         "8332fcbd80839cdcc617bee49529ad1e": {
-            "text": "Erlaube das Erstellen neuer Seiten durch ein Feld."
+            "text": "Erlaube das Erstellen neuer Seiten durch ein Feld?"
         },
         "20463a1675fc256b438538124524746a": {
-            "text": "Wenn gew\u00e4hlt und die Voraussetzungen erf\u00fcllt werden, wird eine Option zum hinzuf\u00fcgen neuer Seiten sichtbar sein."
-        },
-        "7673446b991c59998763308c9f7f5d53": {
-            "text": "1. Ein Elternteil und ein Template m\u00fcssen zur oben genannten Auswahl hinzugef\u00fcgt werden."
+            "text": "Wenn gew\u00e4hlt und die Voraussetzungen erf\u00fcllt werden, wird eine Option zum Hinzuf\u00fcgen neuer Seiten sichtbar sein."
         },
         "65a208c6491dac4a6fb17f7a62f76658": {
             "text": "2. Der Bearbeiter muss Zugriffsrechte haben, um diese Seiten erstellen oder ver\u00f6ffentlichen zu k\u00f6nnen."
-        },
-        "aa2e4d260721b3a7e2776b8cb9c19fdf": {
-            "text": "3. Das Label Feld muss auf \"Titel (Standard)\" gesetzt werden."
         },
         "d9a5927aa49f1a766a15e692b69c1c91": {
             "text": "In der Auswahl verf\u00fcgbare Eingabefelder."
@@ -80,20 +53,143 @@
         "4349c31cba02549f2043d69b9eb0d66e": {
             "text": "(unver\u00f6ffentlicht)"
         },
-        "53158583a607fba6e71f0f18d73a910b": {
-            "text": "Custom Selektor um w\u00e4hlbare Seiten zu finden"
+        "d0188d35124b9f7887cc0d158da64328": {
+            "text": "Falls Sie ausw\u00e4hlbare Seiten mit einem PHP-Code-Snippet anstatt mit einer Elternseite oder Template (oben) finden wollen, geben Sie hier den Code ein. Diese Anweisung hat Zugriff auf die $page und $pages API Variablen, wobei $page sich auf die editierte Seite bezieht."
         },
-        "bb990f9776c28444dad4fa48fb2c946c": {
-            "text": "Label Feld"
+        "e8764466585c7e1a106fd67e89ce91c6": {
+            "text": "Das Snippet sollte entweder ein PageArray, Page oder NULL zur\u00fcckgeben. Falls es eine Seite (Page) zur\u00fcckgibt, werden die Kindseiten als ausw\u00e4hlbare Seiten genutzt. Die Nutzung ist optional. Falls angewendet, werden die o.g. Eltern\/Template\/Selektor Felder \u00fcberschrieben."
         },
-        "54b79da80ed98094797b9e3ee68488a6": {
-            "text": "Mit einem Pluszeichen gekennzeichnete Typen setzen eher eine \"Elternseite\" als Root eines Baumes voraus, als eine unmittelbare Elternseite."
+        "a9e792488572b1b5316720df20682ad3": {
+            "text": "Hinweis: nicht kompatibel mit den Eingabefeld-Typen PageListSelect oder Autocomplete."
         },
-        "6ad160329dd81f9ecede290bffe93928": {
-            "text": "Falls Sie ausw\u00e4hlbare Seiten mit einem ProcessWire Selektor anstatt mit einer Elternseite oder Template (oben) finden wollen, geben Sie hier den Selektor ein. Dieser Selektor f\u00fchrt zu einer $pages->find(\"your selector\"); Anweisung. Hinweis: im Moment nicht kompatibel mit PageListSelect Eingabe Feldtypen."
+        "d8f9928df4675d892629c754932fad80": {
+            "text": "Label-Feld"
         },
-        "5b2e8722316eee4b8e200d6d07b51915": {
-            "text": "Falls Sie ausw\u00e4hlbare Seiten mit einem PHP Code-Snippet anstatt mit einer Elternseite oder Template (oben) finden wollen, geben Sie hier den Code ein. Diese Anweisung hat Zugriff auf die $page und $pages API Variablen, wobei $page sich auf die editierte Seite bezieht. Das Snippet sollte entweder ein PageArray oder NULL zur\u00fcckgeben. Die Nutzung ist optional. Falls angewendet, werden die o.g. Eltern\/Template\/Selektor Felder \u00fcberschrieben. Hinweis: nicht kompatibel mit PageListSelect oder Autocomplete Eingabe Feldtypen."
+        "a0cb77306b6f4e96a00cdc5a0c128166": {
+            "text": "W\u00e4hlen Sie \"Eigenes Format\" falls mehrere Felder oder andere oben nicht sichtbare Felder festgelegt werden sollen."
+        },
+        "282acaaa24f42bb779ccb235bfc37491": {
+            "text": "Eigenes Format (mehrere Felder)' . ' ..."
+        },
+        "ccfbd07eab619923148d98d09c91e15e": {
+            "text": "Eigenes Format f\u00fcr Seiten-Label"
+        },
+        "ebebc537c9c3117a5e2304be412d83f3": {
+            "text": "Legen Sie ein oder mehrere Felder mit geschweiften {Klammern} zusammen mit beliebigen zus\u00e4tzlichen Zeichen, Zwischenraum oder Zeichensetzung fest."
+        },
+        "190dcbcb68a0545eb0e38c4eca2961e0": {
+            "text": "Beispiel: {parent.title} - {title}, {date}"
+        },
+        "1920ec4f46fd3f4962d351c84f69cf7e": {
+            "text": "="
+        },
+        "b329c0bc717cd35d04a9362fc0d778c2": {
+            "text": "="
+        },
+        "db62b7d9ccb858fb53481683f5d1d813": {
+            "text": "Dieses Feld muss vor der ersten Nutzung konfiguriert werden."
+        },
+        "5e1daea70649e788db6ead8cd50f791d": {
+            "text": "Die unver\u00f6ffentlichte Seite %1$s ist in Feld \"%2$s\" nicht erlaubt"
+        },
+        "309980b76124ca15c19a948edcd2b820": {
+            "text": "W\u00e4hlbare Seiten"
+        },
+        "e50655dbc7c36d40e2cf238aae3bf9c8": {
+            "text": "Nutzen Sie mindestens eine der unteren Optionen, um festzulegen, welche Seiten mit diesem Feld w\u00e4hlbar sind."
+        },
+        "30269022e9d8f51beaabb52e5d0de2b7": {
+            "text": "Elternseite"
+        },
+        "278c491bdd8a53618c149c4ac790da34": {
+            "text": "="
+        },
+        "e633bd1a014a2d5f6beee84c20440cb4": {
+            "text": "W\u00e4hlen Sie das Template f\u00fcr die betreffenden Seiten. Das kann als Ersatz oder in Erg\u00e4nzung zum oberen Elternteil genutzt werden."
+        },
+        "38c3a6e66709a7bfc48e7450e726a9b5": {
+            "text": "Zus\u00e4tzliche Templates"
+        },
+        "24ae2cf02f858ca0ae6dd168fe28add8": {
+            "text": "Falls Sie zus\u00e4tzliche Templates f\u00fcr w\u00e4hlbare Seiten ben\u00f6tigen, w\u00e4hlen Sie diese hier."
+        },
+        "1bffba8c823b325ac5713f424da43182": {
+            "text": "Dies wird unter Umst\u00e4nden nicht von allen Eingabe-Typen unterst\u00fctzt."
+        },
+        "cdce55320d6f3ed4e6ac6f952d43903d": {
+            "text": "Obwohl dies die Elternseite und Template-Auswahl von oben \u00fcberschreibt, wird diese Auswahl (falls vorhanden) trotzdem zur Validierung genutzt."
+        },
+        "83309c97a345b4921da94ff53e86da68": {
+            "text": "F\u00fcgen Sie unten ein oder mehrere Felder hinzu, um eine Abfrage zu erstellen, welche Ihre w\u00e4hlbaren Seiten findet."
+        },
+        "46ccc95f9f53fc892accee255689f495": {
+            "text": "Dies erstellt einen Selektor, welcher Seiten zur Laufzeit findet. Sollten Sie eine manuelle Eingabe bevorzugen, nutzen Sie stattdessen oben die Option \"Selektor String\"."
+        },
+        "709109a0ca7566a6bfae0f6145c8c613": {
+            "text": "Feld zur Abfrage hinzuf\u00fcgen"
+        },
+        "5742607846ab8e8f502a078e624a2f24": {
+            "text": "Selektor String"
+        },
+        "14d274b0d81592a035d1fb04ee031fb6": {
+            "text": "Falls Sie ausw\u00e4hlbare Seiten mit einem ProcessWire-Selektor finden wollen, geben Sie hier den Selektor ein. Dieser Selektor f\u00fchrt zu einer $pages->find(\"your selector\"); Anweisung."
+        },
+        "c53eb6ef357cebe320e9c359e7adfaeb": {
+            "text": "F\u00fcgen Sie folgenden Hook zu einer %s Datei hinzu und modifizieren es bei Bedarf. Der Hook sollte selektierbare Seiten finden und in einem PageArray zur\u00fcckgeben."
+        },
+        "06d1dad5791272bfde6c76b87289a62b": {
+            "text": "Wenn Sie die zu bearbeitende Seite kennen m\u00fcssen, ist sie erreichbar von: %s"
+        },
+        "89ba456c93408d4bc5888a8e960dbb79": {
+            "text": "Eigener PHP-Code"
+        },
+        "9eeb68b4b7e0c3608f3014ad177b15fb": {
+            "text": "Der Eingabefeld-Typ (Inputfield Modul), welcher zum Ausw\u00e4hlen von Seiten f\u00fcr dieses Feld genutzt werden soll."
+        },
+        "215c501706b9ef0657264f0cb931dbd3": {
+            "text": "Nutzen Sie einen, mit dem \"Eingabewert\" im \"Details-Tab\" kompatiblen, Typ f\u00fcr die Auswahl von Einzel- oder Multi-Seiten."
+        },
+        "081b70a0b1eb9e48918ebc5d3c8afc6b": {
+            "text": "Nach der Auswahl eines Eingabefeld-Typs und speichern Ihrer \u00c4nderungen, k\u00f6nnen weitere Optionen zur Konfiguration direkt unterhalb dieser Sektion angezeigt werden."
+        },
+        "1df666749c8b91ac260ac68b3a1dfeb3": {
+            "text": "Auswahl Multi-Seiten"
+        },
+        "c051cff56b1d25c941ba4268f2c9c8b1": {
+            "text": "Auswahl Einzelseite"
+        },
+        "23aec26e2b521c0e5f1061b3d04983a5": {
+            "text": "sortierbar"
+        },
+        "8f23ded99b5882bf55f3aa4154cf10df": {
+            "text": "Betrifft \"Page List\" Eingabe-Typen"
+        },
+        "bbc8c6c107d8cf7e49310723820e8052": {
+            "text": "Sie haben einen Eingabe-Typ gew\u00e4hlt, welcher spezifische Anforderungen hat."
+        },
+        "d45d37464c307f05fe480979c03fd99b": {
+            "text": "Legen Sie unten nur die Option \"Eltern\" fest beim konfigurieren der \"W\u00e4hlbaren Seiten\"."
+        },
+        "a8e65bab8badd05312e21a13bc8aacf1": {
+            "text": "Beachten Sie, dass Ihre Auswahl der Eltern den Root des Baumes der w\u00e4hlbaren Seiten einschliesst."
+        },
+        "d89af7d091962a34d3d666a54148e1f9": {
+            "text": "Falls alles w\u00e4hlbar sein soll, hier nichts festlegen."
+        },
+        "6bd4cf6cf4401b1a39b1fcdd57bd4c68": {
+            "text": "1. Sowohl ein Elternteil als auch ein Template m\u00fcssen in der oberen Auswahl der \"W\u00e4hlbaren Seiten\" festgelegt werden."
+        },
+        "8379c940f14c74babf288df5cec8a408": {
+            "text": "3. Das Labelfeld muss auf \"Titel (Standard)\" gesetzt werden."
+        },
+        "89f32c3a56b097c4da3f220687f2cad5": {
+            "text": "Spezifische Einstellungen f\u00fcr \"%s\""
+        },
+        "533e8044020cfac547586cacca582fca": {
+            "text": "Eigenes Suchergebnis"
+        },
+        "1f6147d9cbae7fa8c3e213824bce6405": {
+            "text": "Um unver\u00f6ffentlichte Seiten zuzulassen, bearbeiten Sie das Feld \"%s\" und lesen Sie die Einstellung auf der Registerkarte \"Details\"."
         }
     }
 }

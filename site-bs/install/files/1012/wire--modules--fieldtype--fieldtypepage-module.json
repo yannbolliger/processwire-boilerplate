@@ -3,7 +3,7 @@
     "textdomain": "wire--modules--fieldtype--fieldtypepage-module",
     "translations": {
         "e28f86b62065207ceeb0b5057eb98537": {
-            "text": "Wenn ihr Feld mehrere Seiten enth\u00e4lt, sollten Sie die erste Option (PageArray) w\u00e4hlen. Falls ihr Feld nur eine einzelne Seite enthalten muss, dann w\u00e4hlen Sie eine der Optionen f\u00fcr einzelne Seiten (wenn Sie nicht sicher sind welche, w\u00e4hlen Sie die letzte Option)."
+            "text": "Wenn Ihr Feld mehrere Seiten enth\u00e4lt, sollten Sie die erste Option (PageArray) w\u00e4hlen. Falls Ihr Feld nur eine einzelne Seite enthalten muss, dann w\u00e4hlen Sie eine der Optionen f\u00fcr einzelne Seiten (wenn Sie nicht sicher sind welche, w\u00e4hlen Sie die letzte Option)."
         },
         "7b438db8547ac1c9ab6c7ba6cb1532db": {
             "text": "Mehrere Seiten (PageArray)"
@@ -14,20 +14,17 @@
         "94a53712b9a34f922a776fc5aa68d31f": {
             "text": "Einzelne Seite (Page) oder leere Seite (NullPage) wenn keine ausgew\u00e4hlt"
         },
-        "d1d7182c9905811b10bcd1f5bdcb9eda": {
-            "text": "Referenzieren in API als"
-        },
         "7d5f7f76b51ac880e91da28dbc52df35": {
             "text": "Unver\u00f6ffentlichte Seiten erlauben?"
         },
         "58b4f6dae2009a3d22a395a94de85360": {
-            "text": "Wenn ausgew\u00e4hlt sind unver\u00f6ffentlichte Seiten als Feld-Eintrag erlaubt. Unver\u00f6ffentlichte Seiten sind nicht im Frontend sichtbar, mit Ausnahme derer welche bearbeitbar sind."
+            "text": "Wenn ausgew\u00e4hlt, sind unver\u00f6ffentlichte Seiten als Feld-Eintrag erlaubt. Unver\u00f6ffentlichte Seiten sind nicht im Frontend sichtbar, mit Ausnahme derer, welche bearbeitbar sind."
         },
         "2d6565614947b2a6daba1a06515124da": {
             "text": "Verwaiste Seitenverweise finden und bereinigen."
         },
         "35a326c72a6584f3c7d70109b5cd45f1": {
-            "text": "Warnung: zur Sicherheit sollten Sie zuerst ein Backup ihrer Datenbank durchf\u00fchren."
+            "text": "Warnung: zur Sicherheit sollten Sie zuerst ein Backup Ihrer Datenbank durchf\u00fchren."
         },
         "f7e35a334f1501cc0365458563f90cf5": {
             "text": "Dies bereinigt ein Problem in \u00e4lteren Versionen von ProcessWire. Dort konnten Verweise auf bereits gel\u00f6schte Seiten bestehen bleiben. Falls Sie bei Suchvorg\u00e4ngen nach Seiten falsche Resultate erhalten (speziell mit Selektoren welche pageref.count nutzen), sollten Sie diesen Reinigungsvorgang durchf\u00fchren."
@@ -40,6 +37,21 @@
         },
         "34a56e6d474c258bb9f4553aae0c7b81": {
             "text": "Kann Template nicht finden"
+        },
+        "e93f994f01c537c4e2f7d8528c3eb5e9": {
+            "text": "Z\u00e4hlen"
+        },
+        "b163d440906ff7e0a02262fb1406e123": {
+            "text": "Seiten-Feldeintrag Typ"
+        },
+        "be288f506d4d5100260d915b396a83be": {
+            "text": "Beispiele zur Anwendung der API"
+        },
+        "c563103ae743ad1643e5f3e49a2c89d5": {
+            "text": "Das Gleiche wie oben mit alternativer Syntax"
+        },
+        "0a7cd2620545065d49a8ca58f5fc0b28": {
+            "text": "Mehr \u00fcber die %s Methode."
         }
     }
 }

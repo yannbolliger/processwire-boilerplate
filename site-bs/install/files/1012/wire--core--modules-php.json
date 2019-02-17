@@ -2,12 +2,6 @@
     "file": "wire\/core\/Modules.php",
     "textdomain": "wire--core--modules-php",
     "translations": {
-        "336fe202866724eda0e075643f972571": {
-            "text": "Achtung: scheinbar gibt es zwei Kopien des Moduls \"%s\" im Dateisystem."
-        },
-        "01d68b9ea1b4ff3238768d9a30bcfa33": {
-            "text": "Bitte entfernen Sie das eine aus \/site\/modules\/, es sei denn es werden aus bestimmten Gr\u00fcnden beide ben\u00f6tigt."
-        },
         "3919fe955716c54c409b522a1003f3e0": {
             "text": "Sie haben keine Berechtigung um dieses Modul auszuf\u00fchren"
         },
@@ -15,7 +9,7 @@
             "text": "Berechtigung hinzugef\u00fcgt: %s"
         },
         "e349b4d55d1eb71f3b313924149aa242": {
-            "text": "Fehler bein hinzuf\u00fcgen von Berechtigung: %s"
+            "text": "Fehler beim hinzuf\u00fcgen von Berechtigung: %s"
         },
         "d8b74ebbc7d2d9e0bb9860f5875e6a58": {
             "text": "Module automatisch installieren"
@@ -27,10 +21,64 @@
             "text": "Berechtigung entfernt: %s"
         },
         "7dd5a577bde82df3631263cfd04a07bb": {
-            "text": "Fehler beim entfernen von Berechtigung: %s"
+            "text": "Fehler beim Entfernen von Berechtigung: %s"
         },
         "141e30f2de96660020efd996cc916413": {
-            "text": "Fehlerhafte Modul Abh\u00e4ngigkeit: %s ben\u00f6tigt %s"
+            "text": "Fehlerhafte Modul-Abh\u00e4ngigkeit: %s ben\u00f6tigt %s"
+        },
+        "de7a358da1292f56861c726d3c860dc0": {
+            "text": "Ben\u00f6tigtes Modul kann nicht installiert werden"
+        },
+        "3ba3666c48feabf2f2506e1f835ea92e": {
+            "text": "Aktualisiere Modul"
+        },
+        "edf71dd6396541cf37f54bf079e21006": {
+            "text": "%d neues Modul gefunden: %s"
+        },
+        "8d36abbc1aa8f167970999175380a355": {
+            "text": "%d neue Module gefunden: %s"
+        },
+        "f0116bd76230140a92cbd37cc524488e": {
+            "text": "wird beim n\u00e4chsten Laden des jeweiligen Moduls angewendet"
+        },
+        "99cf7718c48f783d19e8c8b463a6e704": {
+            "text": "Neue Version von %d Modul gefunden"
+        },
+        "7cbf3b34133e54263a1242eb74a5008e": {
+            "text": "Neue Versionen von %d Modulen gefunden"
+        },
+        "0a6712f704d759c81cdc4416397e7faf": {
+            "text": "Fehler beim Aufbau von Modul: %s"
+        },
+        "7f5ebaf3241ff21764054580a96a3b11": {
+            "text": "Fehler beim initieren von Modul: %s"
+        },
+        "dc3b5200f4c5fe1739b1bb1946ed22c1": {
+            "text": "Fehler beim lesen von Modul: %s"
+        },
+        "1f8ef8340fd2af55ecdf88e4a9ea3d8e": {
+            "text": "Modul hat Fehler ausgegeben w\u00e4hrend der Installation"
+        },
+        "46e2d06b80d816b2916f1f27492fbabd": {
+            "text": "Installation von Modul nicht m\u00f6glich"
+        },
+        "5c4f3cc8a1cdcfa7759b4d0a199bcfa0": {
+            "text": "Modul ist noch nicht installiert"
+        },
+        "8ffefc63396ecaf77fdcafe5163f2bfe": {
+            "text": "Modul ist fest installiert"
+        },
+        "926c4c5bf92909f4225cafbe323a1ea9": {
+            "text": "Modul wird von anderen Modulen ben\u00f6tigt, welche zuerst entfernt werden m\u00fcssen"
+        },
+        "d710b0151d568a1efa24617b78fa1f25": {
+            "text": "Dieses Modul ist ein Feldtyp, welcher im Moment von einem oder mehreren Feldern genutzt wird"
+        },
+        "7ac5a75a8a79dc9b9e8d40dbed9c4124": {
+            "text": "Modul %s ben\u00f6tigt: %s"
+        },
+        "dc3fd488f03d423a04da27ce66274c1b": {
+            "text": "Warnung!"
         }
     }
 }

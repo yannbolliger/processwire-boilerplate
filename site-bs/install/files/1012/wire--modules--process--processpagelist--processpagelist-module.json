@@ -2,21 +2,6 @@
     "file": "wire\/modules\/Process\/ProcessPageList\/ProcessPageList.module",
     "textdomain": "wire--modules--Process--ProcessPageList--ProcessPageList-module",
     "translations": {
-        "7dce122004969d56ae2e0245cb754d35": {
-            "text": "Bearbeiten"
-        },
-        "4351cfebe4b61d8aa5efa1d020710005": {
-            "text": "Ansehen"
-        },
-        "03c2e7e41ffc181a4e84080b4710e81e": {
-            "text": "Neu"
-        },
-        "6bc362dbf494c61ea117fe3c71ca48a5": {
-            "text": "Bewegen"
-        },
-        "ce2c8aed9c2fa0cfbed56cbda4d8bf07": {
-            "text": "Leeren"
-        },
         "f4ec5f57bd4d31b803312d873be40da9": {
             "text": "\u00c4ndern"
         },
@@ -34,12 +19,6 @@
         },
         "d95deddfb80310ff0d1d63013611777c": {
             "text": "Anklicken und ziehen zum bewegen"
-        },
-        "f413b7eb4ef50a382b0fe0cfe04fdc30": {
-            "text": "Legen Sie hie\u00adr\u00adun\u00adter Seiten ab, um sie in den Papierkorb zu verschieben"
-        },
-        "de306d89ec101aba6fb73c6879710e6c": {
-            "text": "404 Seite nicht gefunden"
         },
         "a7e253cd8dd95da3e20daf45519a8dc2": {
             "text": "Papierkorb"
@@ -59,8 +38,71 @@
         "453420e78223c3c2ff7a28bfc3a44dde": {
             "text": "Dies ist die Geschwindigkeit der Animation mit welcher jeder Zweig im Seitenbaum sich auf oder ab bewegt. Niedrige Werte sind schneller, aber weniger wahrnehmbar. Animation deaktivieren mit Eingabe 0."
         },
-        "ae9945c00ae261445f0277fbae516179": {
-            "text": "Jede Seite in einer PageList wird anhand eines Labels identifiziert, typischerweise ein Titel- oder \u00dcberschriftenfeld. Sie k\u00f6nnen festlegen welches Feld hier genutzt werden soll. Um mehrere Felder festzulegen, die Feldnamen mit einem Leerzeichen trennen. Falls das Feld zu einem Objekt f\u00fchrt (wie z.B. eine andere Seite) definieren Sie die Eigenschaft mit einem Punkt, z.B. anotherpage.title. Beachten Sie, wenn das festgelegte Feld zu einem leeren Wert f\u00fchrt, wird ProcessWire das Feld \"Name\" der Seite verwenden."
+        "5ca370c3b4f85b5c8308b75ea46984cb": {
+            "text": "Netzwerkfehler, bitte sp\u00e4ter noch einmal versuchen"
+        },
+        "024dae797f407f0f2bd724f6301999a1": {
+            "text": "Unbekannter Fehler, bitte sp\u00e4ter noch einmal versuchen"
+        },
+        "bdfca484a650a86abab2578865834ac3": {
+            "text": "Jede Seite in einer PageList wird anhand eines Labels identifiziert, typischerweise ein Titel- oder \u00dcberschriftenfeld. Sie k\u00f6nnen festlegen welches Feld hier genutzt werden soll. Um mehrere Felder festzulegen, die Feldnamen mit einem Leerzeichen trennen oder eigenen Format-String verwenden und die Feldnamen in {Klammern} einschliessen. Falls das Feld zu einem Objekt f\u00fchrt (wie z.B. eine andere Seite) definieren Sie die Eigenschaft mit einem Punkt, z.B. anotherpage.title. Beachten Sie, wenn das festgelegte Feld zu einem leeren Wert f\u00fchrt, wird ProcessWire das Feld \"Name\" der Seite verwenden."
+        },
+        "7f46e875eed0badd2516b23657f4f320": {
+            "text": "Aktionen zu Seiten beim hovern anzeigen?"
+        },
+        "04f8c71ea1d550c45b3c987978fe56b3": {
+            "text": "Standardm\u00e4\u00dfig erscheinen Aktionen zu einer Seite nach einem Klick (zumindest im Standard-Admin-Theme). Diese Box markieren um sie stattdessen beim hovern anzuzeigen."
+        },
+        "bcf77f341a0ec5189588bdad819c9ee7": {
+            "text": "Weitere Optionen hierzu finden Sie unter der $config->pageList Einstellung in \/wire\/config.php. Sie k\u00f6nnen diese Einstellungen in die \/site\/config.php kopieren, um sie zu \u00fcberschreiben."
+        },
+        "eceb8bf0921f19bb3ae6972e7902c887": {
+            "text": "Standardwert ist %d."
+        },
+        "f0ebf50a114d563bc9bd51eb8df08f5a": {
+            "text": "Falls der Standardwert beibehalten wird, kann diese Einstellung auch im $config->pageList Array festgelegt werden."
+        },
+        "8cd0d0c99b062b3d22e8c7188ba33ab2": {
+            "text": "Alle anzeigen"
+        },
+        "9f8ce5c6cbebc34795f4241c8932573a": {
+            "text": "(%d Seiten)"
+        },
+        "de9ced9bf5e9829de4a93ad8c9d7a170": {
+            "text": "+"
+        },
+        "e834b638a7a5df6f0de0c57b1d6ac901": {
+            "text": "Nicht-Superusern die Verwendung des Papierkorbs erlauben?"
+        },
+        "6288d796be4065eb3b00cf1fe1f7b613": {
+            "text": "Wenn diese Option aktiviert ist, k\u00f6nnen Benutzer Seiten im Papierkorb sehen (nur Seiten, auf die sie Zugriff haben)."
+        },
+        "98ee3deee3a12fa7795a82801d19a020": {
+            "text": "Dadurch werden auch die Aktionen \"Papierkorb\" und \"Wiederherstellen\" aktiviert, sofern die Zugriffskontrolle dies erlaubt."
+        },
+        "a8a530c941af87d6dc1d0d907cd4ee3f": {
+            "text": "Kindelemente Anzahlart"
+        },
+        "f472347ec718962a0e4560a410768cf1": {
+            "text": "In der Seitenliste wird bei Bedarf neben jeder Seite eine Anzahl von Kindern angezeigt. Welche Art von Anzahl soll sie aufweisen?"
+        },
+        "8c06d8c7bf685599eb5de83ad4d79d08": {
+            "text": "Bei der Anzeige von Nachkommen umfasst die Menge alle Nachkommen, unabh\u00e4ngig davon, ob sie f\u00fcr den Benutzer aufrufbar sind oder nicht."
+        },
+        "1cf8145a75b3d3d0f52759b1808c9cac": {
+            "text": "Direkte Kinder (Standard)"
+        },
+        "f9e98f3e587cf5da4ddb460f0aa52437": {
+            "text": "Nachkommen: Kinder, Enkelkinder, Urenkel, Urenkel, und so weiter....."
+        },
+        "3f842a2d7d72a4f7fb3e400a5b569f0b": {
+            "text": "Beide: Kinder\/Nachkommende"
+        },
+        "d86d2e0723883a6f48c9c0c05d3584b6": {
+            "text": "Beide: Nachkommen\/Kinder"
+        },
+        "69ff054adc667458622b780aabe13d60": {
+            "text": "Stattdessen Seiten-ID-Nummer anzeigen"
         }
     }
 }

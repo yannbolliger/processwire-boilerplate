@@ -1,12 +1,36 @@
 {
-   "file":"wire\/modules\/Process\/ProcessPermission\/ProcessPermission.module",
-   "textdomain":"wire--modules--process--processpermission--processpermission-module",
-   "translations":{
-      "175111b089b0e62fbde2b5344f2a547f":{
-         "text":"System-Berechtigungen verwalten"
-      },
-      "d08ccf52b4cdd08e41cfb99ec42e0b29":{
-         "text":"Berechtigungen"
-      }
-   }
+    "file": "wire\/modules\/Process\/ProcessPermission\/ProcessPermission.module",
+    "textdomain": "wire--modules--process--processpermission--processpermission-module",
+    "translations": {
+        "175111b089b0e62fbde2b5344f2a547f": {
+            "text": "System-Berechtigungen verwalten"
+        },
+        "d08ccf52b4cdd08e41cfb99ec42e0b29": {
+            "text": "Berechtigungen"
+        },
+        "179e210d56ed91c1da0ac7cff7234b21": {
+            "text": "Vordefinierte System-Berechtigungen installieren"
+        },
+        "f6a3c2ccb1bf0db768a1e710b1bb4b8f": {
+            "text": "Zur Installation markieren Sie die Box neben der jeweiligen optionalen Berechtigung"
+        },
+        "349838fb1d851d3e2014b9fe39203275": {
+            "text": "Installieren"
+        },
+        "934d155461a5e54ed0cfed45b64272ed": {
+            "text": "Neue eigene Berechtigung hinzuf\u00fcgen"
+        },
+        "baa866af125aefed417409d878f6d013": {
+            "text": "Optionale Berechtigung hinzugef\u00fcgt: %s"
+        },
+        "f42c0a03ea62c2f657939fd15ef033cb": {
+            "text": "Wenn installiert, muss der Benutzer diese Berechtigung besitzen, um die beschriebene Aufgabe auszuf\u00fchren."
+        },
+        "76455df332216051d893a89ac3b39deb": {
+            "text": "Wenn NICHT installiert, wird die Berechtigung angenommen, wenn der Benutzer bereits Bearbeitungszugriff auf die beschriebene Ressource hat."
+        },
+        "3900b58fd6fe4828f0595efc2d4f574f": {
+            "text": "Daher kann diese Berechtigung, wenn sie installiert ist, bestehende Zugriffsrechte entfernen, bis sie den Rollen zugewiesen wird."
+        }
+    }
 }

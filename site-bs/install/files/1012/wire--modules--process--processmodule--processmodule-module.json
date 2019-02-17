@@ -11,9 +11,6 @@
         "b9c21fa0192c783c8c3d3c48cd251f6c": {
             "text": "Neues Modul gefunden"
         },
-        "4d90ec9a7117ef7ad9c02a90860d7122": {
-            "text": "Um ein Modul zu entfernen klicken Sie das Modul an (zum bearbeiten), dann w\u00e4hlen Sie  'Deinstallieren' und speichern es. Sobald es deinstalliert ist, k\u00f6nnen Sie die Modul-Datei(en) aus \/site\/modules\/ entfernen. Wenn es immer noch in der Liste oben erscheint, m\u00fcssen Sie eventuell den Button 'Nach neuen Modulen suchen' klicken, damit ProcessWire die \u00c4nderung erfasst."
-        },
         "56f298ec43e271496dd37302c5f2d023": {
             "text": "Keine neuen Module gefunden"
         },
@@ -200,9 +197,6 @@
         "801ab24683a4a8c433c6eb40c48bcd9d": {
             "text": "Herunterladen"
         },
-        "8de5f3b8fe691cf6304176b9a5ed54da": {
-            "text": "Sie k\u00f6nnen das Modul Verzeichnis durchsuchen um das gew\u00fcnschte Modul zu finden. Tragen Sie den \"Klassen Name\" f\u00fcr das Modul ein, welches Sie installieren wollen. "
-        },
         "a7d6475ec8993b7224d6facc8cb0ead6": {
             "text": "Seite"
         },
@@ -222,7 +216,7 @@
             "text": "Herunterladen und installieren"
         },
         "ea90a0c1864c51f82f862a6850c13951": {
-            "text": "Modul Dateien gel\u00f6scht"
+            "text": "Modul-Dateien gel\u00f6scht"
         },
         "0d17be96c4c0a8f101dcaa0ce9c5ee7d": {
             "text": "%s l\u00f6schen?"
@@ -233,17 +227,8 @@
         "5ef031b334adbb931cf113da0bd6dcea": {
             "text": "Einstellungen"
         },
-        "ea6cee49cbd5313f532c8f213e820e63": {
-            "text": "Modul Web Service URL"
-        },
-        "b815574829ed2efce1faef571bc8b22e": {
-            "text": "Modul Web Service API Schl\u00fcssel"
-        },
         "76ff1156be021b9f8cc2597febd46133": {
             "text": "Greift zu auf"
-        },
-        "cb4e8aca2c4d3f2f34a8019ac88458bd": {
-            "text": "Neu gefundene Module"
         },
         "844ced21eac449bca19cf378ae770720": {
             "text": "Ung\u00fcltiger Modulname: %s"
@@ -313,6 +298,126 @@
         },
         "19d1a8e075651f072ba0771e6cbc831b": {
             "text": "Schauen Sie sich im Modul-Verzeichnis unter %s um"
+        },
+        "67f02952b064d6064216f2639a516eca": {
+            "text": "Ben\u00f6tigt Modul \"%s\" bevor es installiert werden kann"
+        },
+        "f1206f9fadc5ce41694f69129aecac26": {
+            "text": "Konfigurieren"
+        },
+        "385accc7e6612e8dba4e99f22b6876b1": {
+            "text": "Module welche konfiguriert werden k\u00f6nnen"
+        },
+        "8c3466d7f1cc1dc4c01a040fe64573d5": {
+            "text": "Module im System welche zur Zeit nicht installiert sind"
+        },
+        "de9ced9bf5e9829de4a93ad8c9d7a170": {
+            "text": "Neu hinzuf\u00fcgen"
+        },
+        "63a6a88c066880c5ac42394a22803ca6": {
+            "text": "Aktualisieren"
+        },
+        "349838fb1d851d3e2014b9fe39203275": {
+            "text": "Installieren"
+        },
+        "fd50b49603c0cfa8d50d7c2933cc052c": {
+            "text": "%s installieren?"
+        },
+        "fdbd482a575730a7abb63cdbf62a0f6c": {
+            "text": "Modul \"%s\" hat mehrere Dateien (fett markierte wird verwendet)"
+        },
+        "458268ddfe6f3ace67044ba7f55c7079": {
+            "text": "Hier klicken um die Zuordnung zu \u00e4ndern"
+        },
+        "30d23c0f67dc47f239879658b08c371a": {
+            "text": "Gew\u00fcnschte Modul-Datei"
+        },
+        "fc93b2cc57529c815c8810364ec885ea": {
+            "text": "Es sind mehrere Kopien dieses Moduls vorhanden. W\u00e4hlen Sie die gew\u00fcnschte Modul-Datei aus."
+        },
+        "1c4336473685430feefceabf2d42669c": {
+            "text": "Autoload deaktiviert?"
+        },
+        "0e7a5c8e978678d4124240dafccdc636": {
+            "text": "Seien Sie vorsichtig, das markieren dieser Box kann das Modul oder ihre Seite st\u00f6ren. Nur zum tempor\u00e4ren Test verwenden."
+        },
+        "7f3e66ccbb2c396210f9f58ad5a75e39": {
+            "text": "Fehlersuche"
+        },
+        "883368e39a6dfd38bba57a0d881c87df": {
+            "text": "Modul-Cache aktualisiert (%d Module)"
+        },
+        "326051e869bfb9785613fcb1e957a71e": {
+            "text": "Um ein Modul zu entfernen klicken Sie das Modul an (zum bearbeiten), dann w\u00e4hlen Sie 'Deinstallieren' und speichern es. Sobald es deinstalliert ist, k\u00f6nnen Sie die Modul-Datei(en) aus \/site\/modules\/ entfernen. Wenn es immer noch in der Liste oben erscheint, m\u00fcssen Sie eventuell den Button 'Nach neuen Modulen suchen' klicken, damit ProcessWire die \u00c4nderung erfasst."
+        },
+        "83168e6cb289d732cc78427b51f93153": {
+            "text": "="
+        },
+        "def68ae90aac3e065c37457bc36d22f8": {
+            "text": "="
+        },
+        "617650497438099e992520bf3a664ba6": {
+            "text": "="
+        },
+        "27a35aaa9bc34010a2a8b5f6e72bc59c": {
+            "text": "="
+        },
+        "f660f5f5478044f06b7c4ff7faf94e22": {
+            "text": "="
+        },
+        "6e3ecdf50e3929756d31a4f4a80179da": {
+            "text": "="
+        },
+        "7f05cd7d695e4a911a436478a8f0cdfc": {
+            "text": "="
+        },
+        "289aa00733ebcfd0bae827af29d01356": {
+            "text": "="
+        },
+        "75a1550235c0efb5d9dedd5f02f1fe86": {
+            "text": "Dateicompiler Cache gel\u00f6scht"
+        },
+        "0e1b7d725ac07f97cf9181f6cea25cf5": {
+            "text": "Kompilierte Dateien l\u00f6schen"
+        },
+        "496fe18d4a1185b1236724440ed4ade6": {
+            "text": "Der untere Button l\u00f6scht kompilierte Seitenmodule und Template-Dateien, und erzwingt eine Neukompilierung beim n\u00e4chsten Zugriff. Bitte beachten: dies kann eine tempor\u00e4re Verz\u00f6gerung f\u00fcr eine oder mehrere Abfragen bewirken, w\u00e4hrend der Neukompilierung der Dateien."
+        },
+        "0a5d45b5062fbc6cf7c0fce7c6ecedb7": {
+            "text": "(Standard Namensraum)"
+        },
+        "498ba8bc46d453108ed1961748ae5d6c": {
+            "text": "Keiner (root Namensraum)"
+        },
+        "2f44417567bc123bd7c60de8c2a2b444": {
+            "text": "vor"
+        },
+        "632a2406bbcbcd553eec45ac14b40a0a": {
+            "text": "nach"
+        },
+        "d9402453cf25d5a1ced0a12d96cc7f98": {
+            "text": "Namensraum"
+        },
+        "4516572c6fda0d98d0668aecc205fd25": {
+            "text": "Fehler bei Modul-Installation"
+        },
+        "16e56a7f64aa21e73cf55bd8a6334cf8": {
+            "text": "%s + Beenden"
+        },
+        "f83f6b012ba134e5168ab27e4587b2d3": {
+            "text": "Modulanforderungen sind nicht erf\u00fcllt, die Installation kann Probleme verursachen. Sind Sie sicher, dass Sie installieren wollen?"
+        },
+        "43e59b407ace3714a7913e09ad22a594": {
+            "text": "Hole Modul-Informationen"
+        },
+        "3c6392d21eded83348fcd9ba6fbf3784": {
+            "text": "Jetzt herunterladen"
+        },
+        "bb767ff00426d9e68c6a09aef27403b1": {
+            "text": "Sie k\u00f6nnen das Modulverzeichnis durchsuchen und das Modul finden, das Sie herunterladen und installieren m\u00f6chten."
+        },
+        "a2eff7125bf22d0665eb96166b471821": {
+            "text": "Geben Sie den Klassennamen f\u00fcr das zu installierende Modul ein oder f\u00fcgen Sie ihn ein und klicken Sie dann auf die Schaltfl\u00e4che \"%s\", um fortzufahren."
         }
     }
 }

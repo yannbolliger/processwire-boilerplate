@@ -11,9 +11,6 @@
         "f3f43e30c8c7d78c6ac0173515e57a00": {
             "text": "Filter"
         },
-        "89872ab3eb9af52f34b4dd82077758fc": {
-            "text": "Nach Template filtern"
-        },
         "410267bd4e3c99784bab90c5e64b5209": {
             "text": "Falls ausgew\u00e4hlt, werden nur die Felder eines bestimmten Templates angezeigt. Integrierte Felder werden ebenfalls angezeigt, wenn nach Template gefiltert wird. Ein Asterisk (*) markiert System-Templates."
         },
@@ -23,32 +20,20 @@
         "a81c2112e97c64099ff86d5b97cb13c6": {
             "text": "Felder nach Template"
         },
-        "d9a45316e3230df36980cf6ab8983485": {
-            "text": "Felder nach Feld-Typ"
-        },
         "db2b4f5915e2053955edfec38776a17f": {
             "text": "Falls angegeben, werden nur Felder des ausgew\u00e4hlten Typs angezeigt. Integrierte Felder werden ebenfalls angezeigt, wenn nach Feld-Typ gefiltert wird."
         },
         "cca90d2e0854b62dc0c77ad0e1679be4": {
             "text": "Zeige Felder des Typs: %s"
         },
-        "380f82872d1eb16c53b69ce4cfb45c9f": {
-            "text": "Integrierte Felder anzeigen?"
-        },
         "2a7b956033d031e555889f8ddd52754f": {
             "text": "Falls ausgew\u00e4hlt, werden auch integrierte Felder angezeigt, inklusive dauerhaften und System-Feldern. System-Felder werden vom System ben\u00f6tigt; sie k\u00f6nnen weder gel\u00f6scht noch kann Ihr Name ge\u00e4ndert werden. Dauerhafte Felder sind diejenigen, die nicht aus einem Template entfernt werden k\u00f6nnen. Diese Felder werden intern von ProcessWire verwendet."
-        },
-        "1535d0228ba3626bad19ec55142ffcc6": {
-            "text": "Alle Felder anzeigen, inklusive dauerhaften und integrierten System-Feldern."
         },
         "288fc0452049b753c8a75464d299ffe3": {
             "text": "Keine Felder entsprachen Ihrem Filter"
         },
-        "ad4e206408c1c59bfb8a057ba7857446": {
-            "text": "Kontext"
-        },
         "4ac3deb7dc60a1b4770ad126c84171f7": {
-            "text": "*Zeigt Felder an, die derzeit einen Standardwert \u00fcberschreiben. Einstellungen, die Sie in dieser Sete vornehmen \u00fcberschreiben die Standardeinstellungen nur, wenn sie mit dem Template \"%s\" verwendet werden."
+            "text": "*Zeigt Felder an, die derzeit einen Standardwert \u00fcberschreiben. Einstellungen, die Sie in dieser Seite vornehmen \u00fcberschreiben die Standardeinstellungen nur, wenn sie mit dem Template \"%s\" verwendet werden."
         },
         "c64f8a38fc13441f6cc860a4cbae887a": {
             "text": "Feld l\u00f6schen"
@@ -59,15 +44,6 @@
         "1fa78a97c113bed4e867ec21d9ca918f": {
             "text": "Dieses Feld kann nicht gel\u00f6scht werden, da es von einem oder mehreren Template(s) verwendet wird."
         },
-        "e7ec3883e42efde03a4932115fb807eb": {
-            "text": "Einstellung, falls verwendet mit dem Template: %s"
-        },
-        "bfacb0dba61ee131e07daaacead869c5": {
-            "text": "Grundlegende Einstellungen des Feldes"
-        },
-        "5efc010f527cdfeaa2ef63b1c6898fb5": {
-            "text": "Jede Kombination aus ASCII-Buchstaben [a-z], Zahlen [0-9] und Unterstrich(en) (keine Bindestriche oder Leerzeichen)."
-        },
         "ab2e4f95a7971ee8077df62efa20d437": {
             "text": "Nachdem Sie den Feld-Typ gew\u00e4hlt und gespeichert haben, werden Ihnen vielleicht zus\u00e4tzliche spezifische Konfigurationsoptionen zum gew\u00e4hlten Feld-Typ angezeigt."
         },
@@ -75,25 +51,10 @@
             "text": "Dieses Label erscheint \u00fcber dem Eintragsfeld. Falls leer gelassen wird stattdessen dessen Name verwendet."
         },
         "d421f74dd8c605a337e57a6224f23478": {
-            "text": "Zus\u00e4tzliche Informationen, um dieses Feld zubeschreiben und\/oder Anweisungen, wie Inhalte einzugeben sind."
-        },
-        "0b99d251c68ee30c7f38cefe42d5fbdc": {
-            "text": "Anweisungen zur Benutzung des Feldes"
-        },
-        "90a7d24b2f57968c1090adc8eb1cedff": {
-            "text": "Dieses Feld wird von den folgenden Templates verwendet:"
-        },
-        "e846a7b9b780397947329058d6856fe4": {
-            "text": "Feld im Kontext bearbeiten"
-        },
-        "da15cd97dba363b29a8a06c76d4c4c7d": {
-            "text": "Dieses Feld wird derzeit nicht von Templates benutzt."
+            "text": "Zus\u00e4tzliche Informationen, um dieses Feld zu beschreiben und\/oder Anweisungen, wie Inhalte einzugeben sind."
         },
         "983f66857047c1e6fc8878e54c5c9939": {
             "text": "Feld klonen\/duplizieren?"
-        },
-        "c073843a55498e809c4dd95be0721831": {
-            "text": "W\u00e4hlen Sie die unten stehende Box aus, falls Sie dieses Feld duplizieren\/klonen m\u00f6chten. Der Klon wird angelegt, wenn Sie speichern."
         },
         "ee2d3754b6e7f57898d9d8670f78ae71": {
             "text": "Erweiterte Optionen"
@@ -146,12 +107,6 @@
         "4b2bcb0478b24201a7d60fed561d1b42": {
             "text": "Einzelne Felder bearbeiten, die Seiten-Daten enthalten"
         },
-        "588f35f32f53430bfc4199ef15c424db": {
-            "text": "Filter-Optionen in der Feld-Liste anzeigen?"
-        },
-        "887c58e4743e8c789e4ebea161c6fdfe": {
-            "text": "F\u00fcgt zwei select-Boxen \u00fcber der Feld-Liste ein, mit denen Sie die angezeigten Felder nach Template oder Typ filtern k\u00f6nnen."
-        },
         "7cdb55d0d84a64ee84c14621892d8e10": {
             "text": "Zur Feld-Liste zur\u00fcckkehren, nachdem ein Feld gespeichert wurde?"
         },
@@ -170,17 +125,11 @@
         "f98b1dd6f292ac2dfa3f8b0f9a8df9b0": {
             "text": "Neues Feld hinzuf\u00fcgen"
         },
-        "cba80ebc9ff6059cddbf49c3f46172a6": {
-            "text": "Keines (Standard)"
-        },
         "1f2b73286f18ea71c594652199e86dff": {
             "text": "Abbrechen"
         },
         "b2a6343356c7cf0f4c1aae50c2cac1b7": {
             "text": "L\u00f6schen"
-        },
-        "0071819b4ba5f6d112dbf1eab7cbe2ae": {
-            "text": "Typ"
         },
         "9ea1f3769ad9c72e3ebf7de539b53aa1": {
             "text": "Beschreibung"
@@ -191,9 +140,6 @@
         "46c5d71a7ab758f0ce5b9124cd8c53a4": {
             "text": "dauerhaft"
         },
-        "7f511c25eccff9ce7127eecfb136f443": {
-            "text": "Jeder Tag muss ein Wort sein (Silbentrennung erlaubt)."
-        },
         "4cca2a863deef0fc4de9115b9164537b": {
             "text": "Ohne Stichworte"
         },
@@ -203,12 +149,6 @@
         "3df354a032179f36ea493c3df6643ce1": {
             "text": "Wenn Sie Templates gruppieren wollen, tragen Sie bitte ein Stichwort ein. Nutzen Sie dieses Stichwort um andere Template zu dieser Gruppe hinzuzuf\u00fcgen. Um mehrere Stichworte zu definieren, trennen Sie sie durch ein Leerzeichen. Die Stichworte machen Sinn wenn Sie eine gro\u00dfe Seite nutzen."
         },
-        "78bd709db99c927f3a59a1983f18c237": {
-            "text": "Um Stichworte zusammen klappen zu k\u00f6nnen, f\u00fcgen Sie einen Strich ein. Beispiel: -hallo"
-        },
-        "bcb2ce4355834a060bef50afb9127603": {
-            "text": "Integriert"
-        },
         "a90b5efafea041e94da7fffd2bd530a3": {
             "text": "Grundlagen"
         },
@@ -217,12 +157,6 @@
         },
         "06dacbad9c7587cdace10537b20b43ca": {
             "text": "zeige wenn..."
-        },
-        "9cc4ac29ded1988ae44a553a7ecd4ffc": {
-            "text": "Falls Sie diesem Feld ein Symbol zuordnen m\u00f6chten, hier einen [Symbol-Name](http:\/\/fortawesome.github.io\/Font-Awesome\/icons\/) eintragen."
-        },
-        "41fb8fe20e74e99ab359cecc48be97d5": {
-            "text": "Beispiel: fa-beer"
         },
         "f44c0dcd3537024ab1be348dffe383de": {
             "text": "System"
@@ -254,9 +188,6 @@
         "4fd5d5323fc3d2535f351e46ba740d3c": {
             "text": "...und so weiter..."
         },
-        "a90c3a6bf539d90c6016413cddd2178c": {
-            "text": "Bitte Feld %s \u00fcberpr\u00fcfen"
-        },
         "bd5aef6293f875aa908466a69c08a14a": {
             "text": "Keine Probleme zu Feld %s gefunden"
         },
@@ -268,9 +199,6 @@
         },
         "292694f229d9162dd0a6510ff0745d4f": {
             "text": "%d verwaiste Tabellen-Zeilen entfernen?"
-        },
-        "afb5272a55f7eb214fd004a5becf2bb7": {
-            "text": "Wir haben Datenzeilen in der Tabelle zu diesem Feld gefunden, welche zu keiner Seite passen."
         },
         "011e30aea1ad8c8e81405e295f032cc8": {
             "text": "Daten des Feldes \u00fcberpr\u00fcfen"
@@ -286,6 +214,408 @@
         },
         "7d912a6056deaad44add9eda5494d120": {
             "text": "Diese Box markieren um alle eigenen Einstellungen zu diesem Feld (vom Details und Eingabe Tab) zu behalten. Dies ist empfehlenswert wenn der neue Feldtyp die gleichen oder \u00e4hnliche Eigenschaften zur Konfiguration wie der alte Feldtyp hat. Allerdings kann dies auch zu unn\u00f6tigen oder redundanten Konfig-Daten f\u00fchren, welche Platz im Feld beanspruchen. Sie k\u00f6nnen dies jederzeit sp\u00e4ter analysieren \u00fcber: Erweitert > Daten des Feldes \u00fcberpr\u00fcfen."
+        },
+        "ee9fe18e631383755ce658daed18b15e": {
+            "text": "Falls Sie diesem Feld ein Symbol zuordnen m\u00f6chten, w\u00e4hlen Sie unten ein Symbol aus. F\u00fcr eine visuelle Auswahl auf den Link \"Alle Symbole anzeigen\" klicken."
+        },
+        "c32404a847502e9920d7582aa7fcd811": {
+            "text": "Feld zu\/von Templates hinzuf\u00fcgen oder entfernen"
+        },
+        "bd4e327785b1573fd5108da2d97210b5": {
+            "text": "Dieses Feld wird von den unten markierten Templates verwendet."
+        },
+        "1abe66d94bd2d1029f681142e99454a3": {
+            "text": "Dieses Feld wird zurzeit von keinem Template verwendet."
+        },
+        "50a4257e8c785ebeb46a186bb2c3e08e": {
+            "text": "Sie k\u00f6nnen dieses Feld schnell zu\/von Templates hinzuf\u00fcgen oder entfernen durch entsprechendes markieren der relevanten Boxen und speichern."
+        },
+        "8e4fd886f63504810bb594b41a48d32b": {
+            "text": "Im n\u00e4chsten Bildschirm, nach dem Speichern, werden Sie um Best\u00e4tigung des Hinzuf\u00fcgens oder Entfernens gebeten."
+        },
+        "5920c0593225b73a0d667fe26c95d0f7": {
+            "text": "%d System-Templates werden nicht angezeigt weil der erweiterte Modus deaktiviert ist."
+        },
+        "4debafe5cde021385dce21b063054b59": {
+            "text": "Um dieses Feld zu klonen, bitte den Namen des neuen Feldes eingeben."
+        },
+        "ff0d9fae2d1ae47cb2e3c16ce883ed4e": {
+            "text": "Bitte beachten: nach Best\u00e4tigung dieses Formulars werden Sie die geklonte Kopie bearbeiten."
+        },
+        "0a198ede7ab46185f2e9fb2a3628419b": {
+            "text": "(kopieren)"
+        },
+        "acdd6513356b1414e6d7ec0181240672": {
+            "text": "Sie bearbeiten nun das geklonte Feld."
+        },
+        "b9b9ac08c6bde335d1b5758d4dfcd1da": {
+            "text": "Entferne Feld \"%1$s\" von Template \"%2$s\""
+        },
+        "e84730e92daf0ff6f2ff21874c281f4e": {
+            "text": "Best\u00e4tige entfernen von Feld \"%1$s\" von Template \"%2$s\""
+        },
+        "d3abfd9fce44bd366ad49c2614136c14": {
+            "text": "WARNUNG: dies resultiert in Daten welche zu dem dauerhaft gel\u00f6schten Feld geh\u00f6ren."
+        },
+        "cdd2e54d443ebc672c6a53d756e682cd": {
+            "text": "Bitte haben Sie etwas Geduld. Nach der Best\u00e4tigung kann dieser Vorgang einige Zeit in Anspruch nehmen."
+        },
+        "501a7415f8881524421e7a19287a2c62": {
+            "text": "Es scheint so, als gibt es keine zugeh\u00f6rigen Daten-Zeilen zu dieser Feld\/Template Kombination"
+        },
+        "cbf08d0edf67562708d7ce679defc030": {
+            "text": "Bitte zur Best\u00e4tigung die Box markieren."
+        },
+        "8aa6cad0a41ed8f9776dd6a09805c5ae": {
+            "text": "Feld \"%1$s\" zu Template \"%2$s\" hinzuf\u00fcgen"
+        },
+        "968c4c39df4617d7356ee14137658f3f": {
+            "text": "Wo m\u00f6chten Sie \"%s\" hinzuf\u00fcgen?"
+        },
+        "6620d0d6ed9996e374e77091f72102be": {
+            "text": "Vor %s"
+        },
+        "631a909b3eb785b8b3ae6d4d1a0ed886": {
+            "text": "Nach %s"
+        },
+        "c40f632e4b3c69bbd1af89f5c5f5c617": {
+            "text": "Nicht hinzuf\u00fcgen"
+        },
+        "c7d0e111bad6f0fd32c701944fb16475": {
+            "text": "Bitte ihre \u00c4nderungen \u00fcberpr\u00fcfen und korrigieren oder best\u00e4tigen"
+        },
+        "368f6a2142a5d1f203ccd1a9bd8d974f": {
+            "text": "Feld \"%1$s\" zu Template \"%2$s\" vor \"%3$s\" hinzugef\u00fcgt"
+        },
+        "43f591d56700e6bc6184a8457711d4ed": {
+            "text": "Feld \"%1$s\" zu Template \"%2$s\" nach \"%3$s\" hinzugef\u00fcgt"
+        },
+        "2dc7474fc7cd98da4c757c25d5acd451": {
+            "text": "Feld \"%1$s\" von Template \"%2$s\" entfernt"
+        },
+        "092a2d93903f42f67e257ba6fb82d6a2": {
+            "text": "Fehler beim entfernen von Feld \"%1$s\" von Template \"%2$s\""
+        },
+        "a698a809093ad1c25ea277ff03ae5fc7": {
+            "text": "Aktionen"
+        },
+        "995ed8becc596409849c6a652fbf5cd4": {
+            "text": "Best\u00fcckte Seiten"
+        },
+        "ceb446e97d336c84d1f870ce7840e4ba": {
+            "text": "Daten-Zeilen"
+        },
+        "c869dd452643fae1887833d527dc86d0": {
+            "text": "Dies wird auch %d Daten-Zeile entfernen."
+        },
+        "59da98ece56eec26f5f9edd6f051da0b": {
+            "text": "Dies wird auch %d Daten-Zeilen entfernen."
+        },
+        "7c88547fdcfb8db979ff8e01a8af3cab": {
+            "text": "Hinzuf\u00fcgen oder entfernen von Template(s)"
+        },
+        "158b56553ee2e91623b2568e46a4fb82": {
+            "text": "Vorhandenes Feld klonen"
+        },
+        "64a747bce9561ce24781600d47b1cd66": {
+            "text": "Verwendung von Hinweisen oder zus\u00e4tzlichen Informationen welche unterhalb der Eingabe erscheinen."
+        },
+        "d3528910cb9ca888a0c859b37fe3cb28": {
+            "text": "Hinweise erscheinen hier und sehen so aus."
+        },
+        "48cf9aec9ee1cd5173596f31f65b83e5": {
+            "text": "Feld-Name ist leer"
+        },
+        "4072bd91cd44efb5ae4ef51a319fbd79": {
+            "text": "Feld-Namen d\u00fcrfen nur ASCII Buchstaben, Ziffern oder Unterstriche enthalten."
+        },
+        "2d596b898eecf76afa1f7cca2490f219": {
+            "text": "Feld-Name \"%s\" wird bereits verwendet"
+        },
+        "d0de87a477316bfd58f0bf2b1ae2d40d": {
+            "text": "Feld-Name \"%s\" ist ein reserviertes Wort"
+        },
+        "65016ddfb236155b595fb479c695866b": {
+            "text": "Feld-Namen d\u00fcrfen nicht mit \"_\" oder Ziffern beginnen"
+        },
+        "a6f1b7f6b210b19d1d4ff7722c8fd790": {
+            "text": "Hinweise"
+        },
+        "113304cf8780906880d1e29935deab16": {
+            "text": "falls verwendet mit Template: %s"
+        },
+        "cca387b459a5b38bdc63657a1c52c82b": {
+            "text": "\u00dcberschreiben durch Template"
+        },
+        "0ca08f8f4a8a19f7f1ae87c119494327": {
+            "text": "\u00dcberschreiben"
+        },
+        "94109d0b682a5ee9086924792ab5d349": {
+            "text": "Wollen Sie den Zugriff f\u00fcr dieses Feld verwalten?"
+        },
+        "8c234d4afc42f71cef48c0093be30aa5": {
+            "text": "Wenn aktiviert, k\u00f6nnen Sie den Zugriff zur Ansicht und Bearbeitung auf dieses Feld mit einer Benutzerrolle limitieren."
+        },
+        "146cec6f36689ef0531abb613c24f68d": {
+            "text": "Welche Benutzerrollen k\u00f6nnen dieses Feld ansehen und\/oder bearbeiten?"
+        },
+        "d39bf1bfbc9aef37bb8d6b935d73e53d": {
+            "text": "Wenn keine Boxen markiert sind, k\u00f6nnen nur Superuser den Inhalt des Feldes sehen\/bearbeiten."
+        },
+        "13944cf77acdf1b9e49f6383c101ae89": {
+            "text": "(jeder)"
+        },
+        "f41f3f2472b654b9853580182a36144a": {
+            "text": "Zugriff Umschalter"
+        },
+        "2a154a6134b85f7f936aac0194df1bc0": {
+            "text": "Zeige Feld in Seiten-Editor falls es sichtbar, aber nicht editiebar ist (Benutzer k\u00f6nnen es shen, aber nicht \u00e4ndern)"
+        },
+        "7d21b87f847b61b92648b2050c3c0529": {
+            "text": "Feld-Name darf nicht identisch sein mit Namen einer Sprache"
+        },
+        "521c36a31c2762741cf0f8890cbe05e3": {
+            "text": "An"
+        },
+        "d15305d7a4e34e02489c74a5ef542f36": {
+            "text": "Aus"
+        },
+        "b1c94ca2fbc3e78fc30069c8d0f01680": {
+            "text": "Alle"
+        },
+        "30069b6e08c01b280dea5aec4bf871e0": {
+            "text": "[leer]"
+        },
+        "8db6f3dfa2f2e5da6a736ec49e54f6f9": {
+            "text": "Feld Pr\u00e4sentation\/Sichtbarkeit"
+        },
+        "722302e393e0ef80cae21af3a433fd64": {
+            "text": "Rollen, die dieses Feld sehen d\u00fcrfen"
+        },
+        "7c5a8ae55e59746ba619775959127870": {
+            "text": "Rollen, die dieses Feld bearbeiten d\u00fcrfen"
+        },
+        "b1176bb4251df736f9046c88f2752937": {
+            "text": "Erlaube Zugriff-Kontrolle"
+        },
+        "d8b6bdb4b7004ffa8118daf92c70085d": {
+            "text": "Entferne Zugriff-Kontrolle"
+        },
+        "4ed588740999fc9926706a97d3e6b3ff": {
+            "text": "Erlaube Zugriff auf Wert des Feldes durch die API, selbst wenn es nicht sichtbar ist"
+        },
+        "03161f60700feb1e18fcb34de842c31a": {
+            "text": "Verweigere Zugriff auf Wert des Feldes durch die API, wenn es nicht sichtbar ist"
+        },
+        "23831f621c230fae228ca5bccd05b83e": {
+            "text": "Im Seiten-Editor anzeigen, selbst wenn es nicht editierbar ist"
+        },
+        "7a3d219a780c47deeba29f396adfc6d0": {
+            "text": "Im Seiten-Editor verstecken wenn es nicht editierbar ist"
+        },
+        "e2159a4c36a7a7881992637d1da6e379": {
+            "text": "Zugriff"
+        },
+        "a360c947f7ea8bd51220987c073edf15": {
+            "text": "Einstellung"
+        },
+        "f4aa6607ad257caa74e12b30eab4b8c6": {
+            "text": "\u00dcberschrieben"
+        },
+        "0255524701bd52455b1ae33bf39818ff": {
+            "text": "Einstellung entfernen"
+        },
+        "799ef6a367b3b36deb5be25ef8e7c91a": {
+            "text": "Zugriff"
+        },
+        "1cdcfe223f7fb1cc15748a347bf161b2": {
+            "text": "Ja"
+        },
+        "b26a4731ede28b0686cf017804aa3574": {
+            "text": "Nein"
+        },
+        "afd2f2d22bac5fd1faf1abf753685366": {
+            "text": "Rolle"
+        },
+        "904c279e535c872896eab899b55e9c46": {
+            "text": "Ansehen"
+        },
+        "32bcbddae2df658b6d193932ab97720e": {
+            "text": "Bearbeiten"
+        },
+        "4eea024c6b0c3cd104fe2b37edf668f9": {
+            "text": "\u00dcberschreiben einstellen f\u00fcr Template: %s"
+        },
+        "7d10eb77b41ac086ecfca9a7d417b1c6": {
+            "text": "\u00dcberschreiben einstellen nach Template"
+        },
+        "f66ca574111495a45f458a04c77f3c03": {
+            "text": "Benutzer m\u00fcssen auf der Seite mit diesem Feld auch die Berechtigungen zum Ansehen oder Bearbeiten haben, bevor diese Berechtigung angewendet werden kann."
+        },
+        "8a643d587e2bf89aa615d22c5e9efa6a": {
+            "text": "Zugriff auf Wert des Feldes \u00fcber die API erlauben, selbst wenn es nicht sichtbar ist (siehe unten)*"
+        },
+        "517e6c314a1ee61caa35000768dca057": {
+            "text": "Wenn ein Feld nicht sichtbar ist (im Frontend mit aktiver Ausgabe-Formatierung), gibt der $page->%s Wert eine leere Version des erwarteten Typs aus. Dies verhindert, dass der Wert angezeigt wird."
+        },
+        "5dab87f5242c802765e397e82db0840b": {
+            "text": "Markieren Sie die obere Box um dieses Verhalten umgehen. Damit kann immer per API auf den Wert zugegriffen werden. Dies \u00fcberl\u00e4sst Ihnen jede \u00dcberpr\u00fcfung von Zugriffen."
+        },
+        "d96a1b8071d5f5f8eb8bc96839d85407": {
+            "text": "Sie k\u00f6nnen die Berechtigung zum Ansehen f\u00fcr dieses Feld \u00fcber die API so pr\u00fcfen:"
+        },
+        "71f8bd77c0780518e62960d62ebd72bd": {
+            "text": "Kontext \u00fcberschreiben entfent"
+        },
+        "b98e1358fd47b54afceecd12ace8e18c": {
+            "text": "Die folgenden Einstellungen f\u00fcr dieses Feld sind \u00fcberschrieben durch angegebene(s) Template(s). Markieren Sie die Box rechts von der Zeile um die \u00fcberschriebene Einstellung zu entfernen (stellt original Wert wieder her)."
+        },
+        "62d09c342e50351059153e99a2fdbb47": {
+            "text": "Zum bearbeiten einer \u00dcberschreib-Einstellung oder \u00fcberschreiben anderer Einstellungen, ein Template bearbeiten und in der Feld-Liste den Feld-Namen anklicken."
+        },
+        "2452cab12330c0a3ce62f7974eb82ba6": {
+            "text": "Entfernt \u00dcberschreibungen im Kontext"
+        },
+        "7ce33a363647f83aa612fc538dcb8214": {
+            "text": "Die folgenden Einstellungen \u00fcberschreiben die originalen Einstellungen des Feldes wenn dieses Feld im Kontext zum \"%s\" Template verwendet wird."
+        },
+        "b5781496c3e514537473d4edd038152a": {
+            "text": "Um beliebige \u00fcberschriebene Werte zu entfernen (und den originalen Feld-Wert wieder herzustellen) markieren Sie die Box rechts neben jeder Einstellung, welche entfernt\/wieder hergestellt werden soll."
+        },
+        "a60852f204ed8028c1c58808b746d115": {
+            "text": "="
+        },
+        "4da66962948d7a922e24b9821417f14f": {
+            "text": "="
+        },
+        "0b6c421579ca54de1ee2d79df5df6f05": {
+            "text": "="
+        },
+        "83cfa166d441c1b47108e5d6b3f21cbe": {
+            "text": "="
+        },
+        "b342aa8cb5e92300b8b0bda3eaf8076d": {
+            "text": "="
+        },
+        "678cad4866392ed0961cbce7d6ff550d": {
+            "text": "="
+        },
+        "f1cb39a9250fe6002851375559d8bd85": {
+            "text": "="
+        },
+        "7f8ceb624f94b152f89f7bfd06a2dff2": {
+            "text": "="
+        },
+        "47ee982b17f699a3dffff43c76df78ec": {
+            "text": "="
+        },
+        "d94836b689b2cd95f920084c5f27e770": {
+            "text": "Wir haben Datenzeilen in der Tabelle zu diesem Feld gefunden, welche zu keiner Seite passen oder auf Seiten verweisen, welche dieses Feld nicht haben."
+        },
+        "f46277b28f420e695210233a9f1401fc": {
+            "text": "Bitte f\u00fchren Sie \"Aktionen > Daten des Feldes \u00fcberpr\u00fcfen\" auf Feld %s durch"
+        },
+        "4759b9b64d72e5a1a226e72b31ff919e": {
+            "text": "Front-End-Bearbeitung"
+        },
+        "349838fb1d851d3e2014b9fe39203275": {
+            "text": "Installieren"
+        },
+        "b35a1460619c7aebb19fddf043d4953d": {
+            "text": "Bitte das Front-End-Seiten-Editor Modul installieren um die Front-End-Bearbeitung f\u00fcr Felder zu erm\u00f6glichen. Nach Installation, die Seite neu laden und hier weitere Optionen ausw\u00e4hlen."
+        },
+        "4b170345be16c4cee0984c08ab54614d": {
+            "text": "falls verwendet mit: %s"
+        },
+        "be777931cbea33cf8f3a5f5cd994ea93": {
+            "text": "\u00dcberschreiben einstellen f\u00fcr Feld Namensraum: %s"
+        },
+        "57a9412e7a9b1f328ffef4cd468dabeb": {
+            "text": "Als erstes Feld hinzuf\u00fcgen"
+        },
+        "927e2bece8a3ee4ce5f53aca157c04ec": {
+            "text": "Nur ASCII-Buchstaben (a-z A-Z), Zahlen (0-9) und Unterstriche verwenden."
+        },
+        "760b4bbc37693597edf00f9eeda38cd0": {
+            "text": "Derzeit werden keine Einstellungen vom Template \u00fcberschrieben."
+        },
+        "89fa758424367d5caeb355f904d5bfc1": {
+            "text": "Erlaubte \u00dcberschreibungen"
+        },
+        "7710897a6218283716118180cd494f1e": {
+            "text": "\u00dcberpr\u00fcfte Einstellungen werden als Konfigurationsoptionen angezeigt, wenn Sie dieses Feld im Kontext eines bestimmten Templates bearbeiten."
+        },
+        "c4d3fb0af8e800de549531cccd8a19f8": {
+            "text": "Achtung: Das Ausf\u00fchren von Einstellungen, die \u00fcber die vom Autor des Moduls angegebenen Werte hinausgehen, funktioniert m\u00f6glicherweise nicht immer oder kann zu Problemen f\u00fchren."
+        },
+        "2babe53026309ed1bc4d26626dbaf9b3": {
+            "text": "="
+        },
+        "c4e024e71ba191d41926d9fcfa7cde3a": {
+            "text": "Eingabe:"
+        },
+        "6ed7cdaf5655ad6feaf61425896fca0e": {
+            "text": "Fehler in Einstellung \"%s\""
+        },
+        "86cdc0e0ad458e6450b25153b0ca0248": {
+            "text": "(Sie haben \"%s\" angegeben)"
+        },
+        "ce1e5086faa587952093bfb31f7af1c1": {
+            "text": "Kann nicht validiert werden"
+        },
+        "07f32475d23721446e940087c7e26b53": {
+            "text": "Dies funktioniert nicht, da die Werte Seiten-IDs sein m\u00fcssen"
+        },
+        "c145e5825899a7a53cf8a14b64e53639": {
+            "text": "Stichworte verwalten"
+        },
+        "f62aef3d1bcf85a63cf9af0e03a46c0f": {
+            "text": "Nach Template filtern"
+        },
+        "8870ba7044d8bb0fd95686ec955f9109": {
+            "text": "Nach Typ filtern"
+        },
+        "a922cb7ffa163fa26dfe9e44aaa24d32": {
+            "text": "Systemfelder anzeigen?"
+        },
+        "7db27839ce9f9208f2b52bb9a48220a9": {
+            "text": "Zeigt alle Felder an, einschlie\u00dflich der eingebauten System- und permanenten Felder."
+        },
+        "5da3b0e9c19f86443f6ad42f6d0d1456": {
+            "text": "W\u00e4hlen Sie alle Felder aus, die dieses Stichwort haben sollen"
+        },
+        "2eea24744a636478929cd8cbbe444ded": {
+            "text": "Zusammengeklappt in der Feldliste anzeigen?"
+        },
+        "cd83a77df71e48e6273b925549e0af71": {
+            "text": "Um dieses Stichwort zu l\u00f6schen, entfernen Sie alle Felder aus ihm."
+        },
+        "ed4def612e69863794dc9c98db08b464": {
+            "text": "Stichwort \"%1$s\" zum Feld hinzugef\u00fcgt: %2$s"
+        },
+        "ab7c81ccbce2415afa58b092a3c58162": {
+            "text": "Stichwort \"%1$s\" aus dem Feld entfernt: %2$s"
+        },
+        "d80b6b9388a3f3767f80be5c2ab78976": {
+            "text": "Stichworte erm\u00f6glichen es Ihnen, Sammlungen von Feldern f\u00fcr die Auflistung oder Suche zu erstellen."
+        },
+        "718bd4be79fcb0bac1a4ff2e4528d45d": {
+            "text": "Warnung: Das Stichwort \"%s\" hat den gleichen Namen wie ein Feld."
+        },
+        "9fc8691fab39cc1433cd39430edb0501": {
+            "text": "Neues Stichwort hinzuf\u00fcgen"
+        },
+        "c6e44f0384ed0d130e044f153e7b772f": {
+            "text": "Jedes Stichwort muss ein Wort sein (Unterstriche sind in Ordnung)."
+        },
+        "c101058e7ea21bbbf2a5ac893088e90b": {
+            "text": "Stichwort"
+        },
+        "1bd8f22fdbf8e9e0ca28f3f1e276b085": {
+            "text": "Stichwort: %s"
+        },
+        "6855bfdf44496210543dabeb8f88a1c0": {
+            "text": "System"
         }
     }
 }

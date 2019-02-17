@@ -68,46 +68,30 @@ function truncateText($text, $maxlength = 200) {
 /**
  * Given a group of pages, render a simple <ul> navigation
  *
- * This is here to demonstrate an example of a simple shared function.
- * Usage is completely optional.
- *
  * @param PageArray $items
  * @return string
  *
  */
 function renderNav(PageArray $items) {
+	$out = "";
 
-	// $out is where we store the markup we are creating in this function
-	$out = '';
-
-	// cycle through all the items
 	foreach($items as $item) {
-
-		// render markup for each navigation item as an <li>
-		if($item->id == wire('page')->id) {
-			// if current item is the same as the page being viewed, add a "current" class to it
-			$out .= "<li class='current'>";
-		} else {
-			// otherwise just a regular list item
-			$out .= "<li>";
+		if ($item->id == wire("page")->rootParent->id) {
+			$out .= "<li class='current' aria-current='true'>
+				<span class='sr-only'>" .
+					_x('Current page:', 'navigation') .
+				"</span>";
 		}
+		else $out .= "<li>";
 
-		// markup for the link
-		$out .= "<a href='$item->url'>$item->title</a> ";
-
-		// if the item has summary text, include that too
-		if($item->summary) $out .= "<div class='summary'>$item->summary</div>";
-
-		// close the list item
-		$out .= "</li>";
+		$out .= "<a href='$item->url'>$item->title</a> </li>";
 	}
 
-	// if output was generated above, wrap it in a <ul>
 	if($out) $out = "<ul class='nav'>$out</ul>\n";
 
-	// return the markup we generated above
 	return $out;
 }
+
 
 
 

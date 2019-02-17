@@ -15,25 +15,55 @@
             "text": "Geben Sie die ausw\u00e4hlbaren Optionen ein (eine pro Zeile)."
         },
         "6cdf2b7c6a202509ddad22ed4e6d1c3d": {
-            "text": "Geben sie  als erste Option ein Gleichheitszeiten \"=\" an, um der Liste eine leere Option voranzustellen"
+            "text": "Geben Sie als erste Option ein Gleichheitszeiten \"=\" an, um der Liste eine leere Option voranzustellen"
         },
         "378f6008c3dc6eb2be984683df372592": {
             "text": "Stellen Sie einer Option ein Pluszeichen voran, um sie vorauszuw\u00e4hlen. Beispiel: +My Option"
         },
         "75d2fefda1196dd14f506b0273ebed38": {
-            "text": "Um Wert und Beschriftung zu unterscheiden, trennen Sie sie mit einem Gleichheitszeichen. Beispiel: value=My Option"
+            "text": "Um Wert und Beschriftung zu unterscheiden, trennen Sie diese mit einem Gleichheitszeichen. Beispiel: value=My Option"
         },
         "663f303f44a9a25504e3c434fc37b34d": {
             "text": "Um eine Optionen-Gruppe (optgroup) zu erzeugen, r\u00fccken Sie die Optionen in der Gruppe um 3 oder mehr Leerzeichen ein."
         },
-        "6b66a61fa66288a9a7ad6474d2e686ec": {
-            "text": "Standard Wert"
+        "7c63f89ebf4832b00f3e7365c794b642": {
+            "text": "Um vorausgew\u00e4hlte Standardwerte zu erhalten, tragen Sie die optionalen Werte (einen pro Zeile) unten ein."
         },
-        "c37baf4e64db68f6887058399a37ad60": {
-            "text": "Um vorausgew\u00e4hlte Standardwerte zu erhalten, unten die optionalen Werte (einen pro Zeile) eintragen. Zur Auswahl einer Seite, w\u00e4re(n) dies die Seiten ID Nummer(n)."
+        "032f6def0f9076885bcd8366ce324178": {
+            "text": "Um einen vorausgew\u00e4hlten Standardwert zu erhalten, tragen Sie den optionalen Wert unten ein."
         },
-        "d48cd2cb0f5c1d209800b28e019eb574": {
-            "text": "Die Option f\u00fcr Standardwerte ist verf\u00fcgbar, weil Sie oben die Box \"Pflichtfeld\" markiert haben."
+        "31ce3cdcd67850870b616f75b555bbc5": {
+            "text": "Standardwert"
+        },
+        "d1fd1babab2eaee3f04bcbc5278193d2": {
+            "text": "Zur Auswahl einer Standardseite, w\u00e4re dies die Seiten ID Nummer."
+        },
+        "5c6d4a4ac74797a290100dc74f6cd79d": {
+            "text": "WICHTIG: Der Standardwert wird nur verwendet wenn dieses Feld ein Pflichtfeld ist (siehe Checkbox \"Pflichtfeld\")."
+        },
+        "be1ae5e510797cd29556ba58e16bb3cd": {
+            "text": "Um mehrsprachige Option-Labels zu verwenden, lesen Sie bitte die Anweisungen unter diesem Feld."
+        },
+        "e1d42070d11f4e125dd41933a7931336": {
+            "text": "Anweisungen"
+        },
+        "c3a5b7cc9aad41a355971c9da775b523": {
+            "text": "Geben Sie eine Option pro Zeile an."
+        },
+        "318d7ecad4ade4ae80008273a964b97d": {
+            "text": "Mehrsprachige Anweisungen:"
+        },
+        "f79f891c4cdcad35f5c97b6d5abf6338": {
+            "text": "Wir empfehlen die Verwendung von value=label, wobei der Wert in allen Sprachen gleich ist und das Label \u00fcbersetzt wird."
+        },
+        "276062e72d8dad493a3c12ee48129c09": {
+            "text": "Definieren Sie zun\u00e4chst Ihre Standard-Sprachoptionen, und kopieren Sie dann in die anderen Sprachen und \u00fcbersetzen Sie Labels."
+        },
+        "1de150b2c32ea78f720ed5680ede3e36": {
+            "text": "Ausgew\u00e4hlte Optionen und Optionsgruppen werden in der Standardsprache definiert; die anderen Eingabefelder dienen nur der Label-\u00dcbersetzung."
+        },
+        "6fad098a8ac595a164cf68a53d2669ec": {
+            "text": "Labels, die nicht \u00fcbersetzt werden, erben das Standard-Sprachlabel."
         }
     }
 }

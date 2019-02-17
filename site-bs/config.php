@@ -42,6 +42,7 @@ $config->imageSizerOptions = array(
  'cropping' => true,
  'quality' => 80,
  );
+$config->defaultAdminTheme = 'AdminThemeUikit';
 
 
 /*** INSTALLER CONFIG ********************************************************************/

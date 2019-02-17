@@ -26,14 +26,16 @@
 	// handle output of 'hreflang' link tags for multi-language
 	// this is good to do for SEO in helping search engines understand
 	// what languages your site is presented in
+
 	foreach($languages as $language) {
-		// if this page is not viewable in the language, skip it
-		if(!$page->viewable($language)) continue;
-		// get the http URL for this page in the given language
+		if (!$page->viewable($language)) continue;
+
 		$url = $page->localHttpUrl($language);
+
 		// hreflang code for language uses language name from homepage
 		$hreflang = $homepage->getLanguageValue($language, 'name');
-		// output the <link> tag: note that this assumes your language names are the same as required by hreflang.
+
+		// NOTE: that this assumes your language names are the same as required by hreflang.
 		echo "\n\t<link rel='alternate' hreflang='$hreflang' href='$url' />";
 	}
 	?>
@@ -41,46 +43,34 @@
 </head>
 <body>
 
-	<?php // language switcher / navigation ?>
-	<ul class='languages' role='navigation'><?php
-		foreach($languages as $language) {
-			if(!$page->viewable($language)) continue; // is page viewable in this language?
-			if($language->id == $user->language->id) {
-				echo "<li class='current'>";
-			} else {
-				echo "<li>";
+	<?php // language switcher ?>
+	<ul class='languages' role='navigation'>
+		<?php
+			foreach($languages as $language) {
+				if (!$page->viewable($language)) continue;
+
+				if ($language->id == $user->language->id) echo "<li class='current'>";
+				else echo "<li>";
+
+				$url = $page->localUrl($language);
+				$hreflang = $homepage->getLanguageValue($language, 'name');
+				echo "<a hreflang='$hreflang' href='$url'>$language->title</a></li>";
 			}
-			$url = $page->localUrl($language);
-			$hreflang = $homepage->getLanguageValue($language, 'name');
-			echo "<a hreflang='$hreflang' href='$url'>$language->title</a></li>";
-		}
-	?></ul>
+		?>
+	</ul>
 
 	<? // top navigation ?>
-	<ul class='topnav' role='navigation'><?php
-		// top navigation consists of homepage and its visible children
-		foreach($homepage->and($homepage->children) as $item) {
-			if($item->id == $page->rootParent->id) {
-				echo "<li class='current' aria-current='true'><span class='visually-hidden'>" . _x('Current page:', 'navigation') . " </span>";
-			} else {
-				echo "<li>";
+	<?= renderNav($homepage->and($homepage->children)) ?>
+
+	<div class='breadcrumbs' role='navigation' aria-label='<?php echo _x('You are here:', 'breadcrumbs'); ?>'>
+		<?php
+			foreach($page->parents() as $item) {
+				echo "<span><a href='$item->url'>$item->title</a></span> ";
 			}
-			echo "<a href='$item->url'>$item->title</a></li>";
-		}
-
-		// output an "Edit" link if this page happens to be editable by the current user
-		if($page->editable()) echo "<li class='edit'><a href='$page->editUrl'>" . __('Edit') . "</a></li>";
-	?></ul>
-
-	<?php // breadcrumbs ?>
-	<div class='breadcrumbs' role='navigation' aria-label='<?php echo _x('You are here:', 'breadcrumbs'); ?>'><?php
-		// breadcrumbs are the current page's parents
-		foreach($page->parents() as $item) {
-			echo "<span><a href='$item->url'>$item->title</a></span> ";
-		}
-		// optionally output the current page as the last item
-		echo "<span>$page->title</span> ";
-	?></div>
+			// optionally output the current page as the last item
+			echo "<span>$page->title</span> ";
+		?>
+	</div>
 
 	<?php //search engine ?>
 	<form class='search' action='<?php echo $pages->get('template=search')->url; ?>' method='get'>
@@ -91,22 +81,17 @@
 
 
 	<main>
-		<div id='content'>
 
+		<div id='content'>
 			<h1><?php echo $title; ?></h1>
 			<?php echo $content; ?>
-
 		</div>
 
-		<!-- sidebar content -->
+
 		<?php if($sidebar): ?>
-
 		<aside id='sidebar'>
-
 			<?php echo $sidebar; ?>
-
 		</aside>
-
 		<?php endif; ?>
 
 	</main>
@@ -116,9 +101,13 @@
     <?php require '_contact_form.php'; ?>
 	</footer>
 
-	<script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
-	<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.colorbox/1.6.4/jquery.colorbox-min.js"></script>-->
-	<script type="text/javascript" src="<?= versionedAssetUrl('scripts/main.js') ?>" ></script>
+	<script
+		src="https://code.jquery.com/jquery-3.2.1.min.js"
+		integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+		crossorigin="anonymous">
+	</script>
+	<? /* <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.colorbox/1.6.4/jquery.colorbox-min.js"></script>
+	<script type="text/javascript" src="<?= versionedAssetUrl('scripts/main.js') ?>" ></script> */ ?>
 
 </body>
 </html>

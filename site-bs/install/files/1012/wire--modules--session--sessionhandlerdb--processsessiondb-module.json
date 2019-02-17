@@ -12,7 +12,7 @@
             "text": "Seite"
         },
         "32dc37d4cb3662c77f3415b48673af02": {
-            "text": "IP Adresse"
+            "text": "IP-Adresse"
         },
         "96e3fa0d1eb9be568924ee1c73b5594d": {
             "text": "Keine aktiven Sessions"
@@ -31,6 +31,18 @@
         },
         "8f9bfe9d1345237cb3b2b205864da075": {
             "text": "Benutzer"
+        },
+        "14db3637a09c9b2ca9c1338171285965": {
+            "text": "%d aktive Session"
+        },
+        "a29ecfb237834699193ba759c9af8efe": {
+            "text": "%d aktive Sessions"
+        },
+        "dfb790522fdea3859af206d32916fe77": {
+            "text": "User-Agent"
+        },
+        "a9c4b6c9fbd990849d1f128dfc4ed3e7": {
+            "text": "="
         }
     }
 }
