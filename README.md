@@ -1,14 +1,15 @@
 # Welcome to BS ProcessWire 3.x Boilerplate
 
-This is a starter boilerplate for ProcessWire in use by Bolliger Studios.
-It comes with an up to date version of PW 3.0, the new AdminUiKit interface
-and some custom made additional features:
+This is a starter boilerplate for ProcessWire in use by [Bolliger
+Studios](https://bolligerstudios.ch). It comes with an up to date version of PW
+3, the new AdminUiKit interface and some custom additional features:
 
-  - Customisable ready-made AJAX contact form, click to install.
-  - Colorbox plugin for nice and easy image galleries.
+  - Ready-made AJAX contact form, click to install.
+  - Colorbox plugin integration for nice and easy image galleries.
   - Predefined documents fieldtype with render template.
-  - Git commit versioned asset urls.
-  - Basic SCSS presets and normalize.css in an easy-to-use pipeline.
+  - Predefined mp3 file fieldtype with render template.
+  - Git commit-based versioned asset URLs.
+  - Basic SCSS presets and `normalize.css` in an easy-to-use pipeline.
   - ProcessWire Upgrade module already installed.
   - German translation files already installed.
 
@@ -24,20 +25,21 @@ clients. More info here
 
 ## Installing BS ProcessWire 3.x Boilerplate
 
-  - Clone this repo.
+- Clone this repo.
 
-  - Make a copy of `.htaccess-dev` and call it `.htaccess` in the root folder.
+- Make a copy of `.htaccess-dev` and call it `.htaccess` in the root folder.
 
-  - Start a web server (like MAMP) and load the URL in your web browser. This
-    will start the installer. See the official [Installation
-    Guide](https://processwire.com/docs/install/new/) for more details and
-    instructions. If you run into any trouble, please see our [Troubleshooting
-    Guide](https://processwire.com/docs/install/troubleshooting/).
+- Start a web server (like MAMP) and load the URL in your web browser. This will
+  start the installer. See the official [Installation
+  Guide](https://processwire.com/docs/install/new/) for more details and
+  instructions. If you run into any trouble, please see the official
+  [Troubleshooting
+  Guide](https://processwire.com/docs/install/troubleshooting/).
 
-  - Choose the BS custom starter template. Disable the deletion of the
-    `.gitignore` file.
+- Choose the BS custom starter template. Disable the deletion of the
+  `.gitignore` file.
 
-  - Finish!
+- Finish!
 
 ## Enabling contact form
 
@@ -66,9 +68,7 @@ Debug mode causes all errors to be reported to the screen, which can be
 helpful during development or troubleshooting. When in the admin, it also
 enables reporting of extra information in the footer. Debug mode is not
 intended for live or production sites, as the information reported could
-be a problem for security. So be sure not to leave debug mode on for
-any live/production sites. However, we think you'll find it very handy
-during development or when resolving issues.
+be a problem for security.
 
 1. Edit this file: `/site/config.php`
 2. Find this line: `$config->debug = false;`
