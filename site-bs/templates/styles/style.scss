@@ -1,8 +1,6 @@
-// compressed: false
+// compressed: true
 
 @import "normalize";
-// @import "colorbox";
-// @import "contact";
 
 //////////////////////////////
 // Variables
@@ -10,7 +8,7 @@
 $unit: 16px;
 
 // Breakpoints
-$mobile-breakpoint: 640px;
+$xs-breakpoint: 640px;
 $max-container-width: 1000px;
 
 // Typography
@@ -26,27 +24,11 @@ $main-color: #f00;
 $duration-base: 0.35s;
 
 //////////////////////////////
-// Mixins
+// Imports
 
-@mixin clearfix() {
-  &:after {
-    display: table;
-    clear: both;
-    content: " ";
-  }
-}
-
-@mixin fade-on-active($d: $duration-base) {
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity $d 0s, visibility 0s $d;
-
-  &.active {
-    visibility: visible;
-    opacity: 1;
-    transition-delay: 0s;
-  }
-}
+@import "mixins";
+// @import "colorbox";
+// @import "contact";
 
 //////////////////////////////
 // General styling
@@ -88,13 +70,13 @@ audio {
 }
 
 .only-mobile {
-  @media screen and (min-width: $mobile-breakpoint) {
+  @include breakpoint-for-larger() {
     display: none !important;
   }
 }
 
 .only-desktop {
-  @media screen and (max-width: $mobile-breakpoint - 0.5) {
+  @include breakpoint-for-smaller() {
     display: none !important;
   }
 }
@@ -118,7 +100,7 @@ audio {
 
   @include clearfix;
 
-  @media screen and (min-width: $mobile-breakpoint) {
+  @include breakpoint-for-larger() {
     padding: 0 2 * $unit;
   }
 }
